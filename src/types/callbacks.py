@@ -1,0 +1,30 @@
+
+from abc import ABC, abstractmethod
+
+class Callback(ABC):
+    @abstractmethod
+    def execute(self, message: str) -> None:
+        """Basic message execution"""
+        pass
+    
+    @abstractmethod
+    def __enter__(self):
+        """Enter loading state"""
+        pass
+    
+    @abstractmethod
+    def __exit__(self, exc_type, 
+                 exc_val,
+                 exc_tb) -> None:
+        """Exit loading state"""
+        pass
+    
+    @abstractmethod
+    def update_status(self, message: str) -> None:
+        """Update loading state message"""
+        pass
+
+    @abstractmethod
+    def get_input(self, message: str) -> str:
+        """Get input from user"""
+        pass
