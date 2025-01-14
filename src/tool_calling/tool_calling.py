@@ -1,99 +1,125 @@
-from typing import List, Callable, Dict, Optional
+from typing import List, Callable, Dict, Any
+from openai.types.chat.chat_completion_message_tool_call import ChatCompletionMessageToolCall
 import inspect
 import json
 
+# ====== Function Calling Decorator ======
+
 def openai_function_wrapper(
-    function_description: str,
-    parameter_descriptions: Dict[str, str] = {},
+        funct_descript: str,
+        param_descript: Dict[str, str],
+        required_parameters: List[str] = None,
+        enum_parameters: Dict[str, List[str]] = None,
+        strict: bool = True,
+        additional_properties: bool = False,
 ) -> Callable:
-    def decorator(func: Callable) -> Callable:
+    # todo validate input
+    def decorator(funct: Callable) -> Callable:
         class FunctionWrapper:
-            def __init__(self, func, function_description, parameter_descriptions):
-                self.func = func
-                self.function_description = function_description
-                self.parameter_descriptions = parameter_descriptions
+            def __init__(self):
+                self.funct = funct
+                self.function_description = funct_descript
+                self.parameter_descriptions = param_descript
+                self.enum_parameters = enum_parameters
+                self.required_parameters = required_parameters
                 self.output = {
                     "type": "function",
                     "function": {
-                        "name": func.__name__,
+                        "name": funct.__name__,
                         "description": self.function_description,
                         "parameters": {
                             "type": "object",
-                            "required": [],
+                            "required": self.required_parameters or [],
                             "properties": {},
-                            "additionalProperties": False,
+                            "additionalProperties": additional_properties,
                         },
+                        "strict": strict
                     },
                 }
                 self._inspect_parameters()
 
-            def __call__(self, *args, **kwargs):
-                return self.func(*args, **kwargs)
+            parameter_map = {
+                str: "string",
+                int: "integer",
+                float: "number",
+                bool: "boolean",
+            }
 
             def _inspect_parameters(self):
-                signature = inspect.signature(self.func)
+                signature = inspect.signature(self.funct)
                 for name, param in signature.parameters.items():
                     param_info = {
                         "description": self.parameter_descriptions.get(name, ""),
-                        "type": self._get_param_type(param),
+                        "type": (
+                            self.parameter_map[param.annotation]
+                            if param.annotation in self.parameter_map
+                            else "string"
+                        ),
                     }
+                    if name in self.enum_parameters:
+                        param_info["enum"] = self.enum_parameters[name]
                     self.output["function"]["parameters"]["properties"][
                         name
                     ] = param_info
                     if param.default == inspect.Parameter.empty:
-                        self.output["function"]["parameters"]["required"].append(name)
+                        if name not in self.output["function"]["parameters"]["required"]:
+                            self.output["function"]["parameters"]["required"].append(name)
 
-            def _get_param_type(self, param):
-                # Basic type mapping
-                if param.annotation is inspect.Parameter.empty:
-                    return "string"
-                elif param.annotation is str:
-                    return "string"
-                elif param.annotation is int:
-                    return "integer"
-                elif param.annotation is float:
-                    return "number"
-                elif param.annotation is bool:
-                    return "boolean"
-                elif param.annotation is list:
-                    return "array"
-                else:
-                    return "string"
+            def __call__(self, *args, **kwargs):
+                return self.funct(*args, **kwargs)
 
-        return FunctionWrapper(func, function_description, parameter_descriptions)
+        return FunctionWrapper()
 
     return decorator
 
-def create_tools_schema(functions: List[callable]) -> List:
+# ====== Tool Manager Class ======
+
+class ToolManager:
+    def __init__(self, tools: List[Callable], store_result: Callable):
+        """
+        Args:
+            tools: List of functions to be used as tools
+            store_result: Function to store the result of the tool call
+        """
+        self.tools = tools
+        self.tools_schema = create_tools_schema(tools)
+        self.tools_lookup = create_tools_lookup(tools)
+        self.store_result = store_result
+
+    def execute_responses(self, calls: List[ChatCompletionMessageToolCall]):
+        for call in calls:
+            result = execute_function(call, tools_lookup=self.tools_lookup)
+            self.store_result({"role": "tool",
+                           "tool_call_id": call.id,
+                           "name": call.function.name,
+                           "content": str(result)})
+
+# ====== Tool Manager Helper Functions ======
+
+def create_tools_schema(functions: List[callable]) -> List[Dict]:
     tools = []
     for function in functions:
         tools.append(function.output)
     return tools
 
-def create_tools_lookup(functions: List[callable]) -> List:
-    tools_lookup = {} 
+def create_tools_lookup(functions: List[callable]) -> Dict[str, callable]:
+    tools_lookup = {}
     for function in functions:
-        tools_lookup[function.func.__name__] = function
+        tools_lookup[function.funct.__name__] = function
     return tools_lookup
 
-def parse_functions(tool_calls):
-    """Parse function calls from tool_calls list
-    
-    Args:
-        tool_calls: List of tool call objects from the response
-        
-    Returns:
-        List of function call objects
-    """
+def parse_functions(tool_calls: List[ChatCompletionMessageToolCall]) -> List[callable]:
     functions = []
     if tool_calls:
         for tool in tool_calls:
             if tool.type == "function":
                 functions.append(tool)
+    else:
+        raise ValueError("No tool calls found in response")
     return functions
 
-def execute_function(function_object, tools_lookup):
+def execute_function(function_object, tools_lookup: Dict[str, callable]):
     function = tools_lookup[function_object.function.name]
-    kwargs = json.loads(function_object.function.arguments) 
+    kwargs = json.loads(function_object.function.arguments)
     result = function(**kwargs)
     return result

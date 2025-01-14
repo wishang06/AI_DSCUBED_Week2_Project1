@@ -1,7 +1,6 @@
-from typing import Any, List, Optional, Union
+from typing import Any, List, Optional, Union, Callable
 
 from loguru import logger
-from pydantic import BaseModel
 
 from src.clients.anthropic_client import ClientAnthropic
 from src.clients.openai_client import ClientOpenAI
@@ -10,14 +9,16 @@ from src.tool_calling.tool_calling import (
     create_tools_lookup,
     create_tools_schema,
     execute_function,
-    openai_function_wrapper,
     parse_functions,
 )
 from src.types.model_config import LLMInit
 from src.utils.callbacks import CLICallback, DummieCallback
 
+from src.tool_calling import ToolEngine
 
-class AgentEngine():
+main = ToolEngine()
+
+class AgentEngine:
     def __init__(
             self,
             initial_llm_config: LLMInit,
@@ -26,18 +27,10 @@ class AgentEngine():
             initial_prompts: Optional[List[str]] = None,
             callback: Any = DummieCallback()
     ):
-        """_summary_
-
-        Args:
-            initial_llm_config (LLMInit): _description_
-            agent_system_prompt (Optional[str], optional): _description_. Defaults to None.
-            initial_tools (Optional[List[callable]], optional): _description_. Defaults to None.
-            initial_prompts (Optional[List[str]], optional): _description_. Defaults to None.
-            callback (Any, optional): _description_. Defaults to DummieCallback().
-        """
         self.client = initial_llm_config.client
         self.model_name = initial_llm_config.model_name
         self.default_store = ContextStore()
+        self.store = self.default_store
         if agent_system_prompt:
             self.store.set_system_prompt(agent_system_prompt)
         else:
@@ -46,6 +39,7 @@ class AgentEngine():
         self.tools = initial_tools if initial_tools else []
         self.prompts = initial_prompts if initial_prompts else []
         self.queue = []
+        self.agent_tools = []
 
     temp = ""
     state = "begin"
@@ -53,35 +47,28 @@ class AgentEngine():
     def queue_prompt(self, prompt: str):
         self.queue.append(prompt)
 
-    def get_user_input(self, message: str):
-        input = self.callback.get(message)
-        return input
-    
-    def start(self):
-        while self.task_start == False:
-            self.run()
-    
+    def get_user_input(self, message: Optional[str] = None):
+        input_result = self.callback.get(message)
+        return input_result
+
     def run(self):
         if len(self.tools) == 0:
             raise ValueError("No tools added to the engine.")
         self.store.store_string("These are the tools you have:"
-                                + create_tools_schema(self.tools), 
+                                + str(create_tools_schema(self.tools)),
                                 "assistant")
         with self.callback as loading:
             self.store.store_string("""
-            You are in the getting task specification phase. Youl will 
+            You are in the getting task specification phase. You will 
             converse with the user to get the task specification. When
             you have enough information, you will proceed to the planning
             phase by calling the finish_task_definition function.
             """, "assistant")
             while self.state == "begin":
-                input = self.input()
-                self.store.store_string(input, "user")
-                response = self.client.create_tool_completion(
-                    self.model_name,
-                    self.store.retrieve(),
-                    tools=create_tools_schema([self.agent_tools[1]])
-                )
+                user_input = self.get_user_input()
+                self.store.store_string(user_input, "user")
+                response = self.client.create_tool_completion(self.model_name, self.store.retrieve(),
+                                                                tools=create_tools_schema([self.agent_tools[1]]))
                 if response.stop_reason == "tool_calls":
                     self.store.store_tool_response(response)
                     self.process_tool_calls(response, create_tools_lookup(self.agent_tools), loading)
@@ -93,14 +80,14 @@ class AgentEngine():
             the finish_planning function to proceed to the execution phase. Please
             proceed with the planning.
             """, "assistant")
-            self.response = self.client.create_completion(
+            response = self.client.create_completion(
                 self.model_name,
                 self.store.retrieve()
             )
-            self.store.store_response(self.response, "assistant")
+            self.store.store_response(response, "assistant")
             while self.state == "planning":
-                input = self.input()
-                self.store.store_string(input, "user")
+                user_input = self.get_user_input()
+                self.store.store_string(user_input, "user")
                 response = self.client.create_tool_completion(
                     self.model_name,
                     self.store.retrieve(),
@@ -136,8 +123,8 @@ class AgentEngine():
                     temp_contex)
                 self.store.store_response(response, "assistant")
                 if self.state == "user_input":
-                    input = self.get_user_input()
-                    self.store.store_string(input, "user")
+                    user_input = self.get_user_input()
+                    self.store.store_string(user_input, "user")
                     response = self.client.create_tool_completion(
                         self.model_name,
                         self.store.retrieve(),
@@ -173,11 +160,13 @@ class AgentEngine():
             )
             logger.info(f"Tool call {call.function.name} executed\n{str(result)}")  
 
+    def add_agent_tools(self, function: Callable):
+        self.agent_tools.append(function)
                                     
-                    
 
 
-class LinearAgentEngine():
+
+class LinearAgentEngine:
     def __init__(self,
                  client: Union[ClientOpenAI, ClientAnthropic],
                 model_name: str,
@@ -319,7 +308,7 @@ class LinearAgentEngine():
         self.agent_tools.extend(tools)
 
 
-class ToolEngine():
+class ToolEngine:
     def __init__(self, 
                 client: Union[ClientOpenAI, ClientAnthropic],
                 model_name: str,

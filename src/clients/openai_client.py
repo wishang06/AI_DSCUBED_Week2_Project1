@@ -1,6 +1,5 @@
 import vertexai
 import openai
-import logging
 from google.auth import default
 from google.auth.transport import requests as transport_requests
 from .response import ResponseWrapperOpenAI

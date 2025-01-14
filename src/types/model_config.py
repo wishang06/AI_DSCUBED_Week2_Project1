@@ -1,5 +1,4 @@
-from pydantic import BaseModel
-from src.clients.anthropic_client import ClientAnthropic
+from pydantic import BaseModel, ConfigDict
 from src.clients.openai_client import ClientOpenAI
 from typing import Union
 
@@ -11,5 +10,9 @@ class LLMInit(BaseModel):
         client: Union[ClientOpenAI, ClientAnthropic]
         model_name: str
     """
-    client: Union[ClientOpenAI, ClientAnthropic]
+    client: ClientOpenAI
     model_name: str
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+

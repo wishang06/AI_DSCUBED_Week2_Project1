@@ -39,7 +39,6 @@ class BasicAgent():
         def self_prompt(prompt: str) -> str:
             self.queue_prompt("(self-prompted) " + prompt)
             return f"Prompt added to queue: {prompt}"
-        self.add_agent_tools(self_prompt)
         # 2
         @openai_function_wrapper(
             function_description="There's enough information about the \
