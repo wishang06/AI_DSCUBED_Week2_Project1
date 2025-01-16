@@ -1,6 +1,6 @@
 from src.clients.response import ResponseWrapper
 from typing import Dict, Any, List, Optional
-# import logfire
+from loguru import logger
 
 class ContextStore:
     def __init__(self, system_prompt: Optional[str] = None):
@@ -30,7 +30,8 @@ class ContextStore:
         """Store a tool response in the chat history"""
         self.response_log.append(response)
         self.chat_history.append(response.full.choices[0].message)
-        # logfire.info(f"Stored tool response: {response.full}")
+        for tool_call in response.full.choices[0].message.tool_calls:
+            logger.info(f"Tool call: {tool_call}")
     
     def store_function_call_result(self, result: Dict):
         """Store function call result in the chat history

@@ -7,7 +7,7 @@ class LLMInit(BaseModel):
     Client + model name configuration for the LLM.
 
     Attributes:
-        client: Union[ClientOpenAI, ClientAnthropic]
+        client: Union[ClientOpenAI]
         model_name: str
     """
     client: ClientOpenAI

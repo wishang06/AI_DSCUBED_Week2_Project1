@@ -27,8 +27,8 @@ class TerminalOperations:
     
     @staticmethod
     @openai_function_wrapper(
-        function_description="List contents of a directory",
-        parameter_descriptions={
+        funct_descript="List contents of a directory",
+        param_descript={
             "path": "Directory path to list contents from"
         }
     )
@@ -42,8 +42,8 @@ class TerminalOperations:
     
     @staticmethod
     @openai_function_wrapper(
-        function_description="Read contents of a file",
-        parameter_descriptions={
+        funct_descript="Read contents of a file",
+        param_descript={
             "path": "Path to the file to read",
             "max_size": "Maximum file size in bytes (default 1MB)"
         }
@@ -66,14 +66,14 @@ class TerminalOperations:
     
     @staticmethod
     @openai_function_wrapper(
-        function_description="Write content to a file",
-        parameter_descriptions={
+        funct_descript="Write content to a file",
+        param_descript={
             "path": "Path where to write the file",
             "content": "Content to write to the file",
             "overwrite": "Whether to overwrite if file exists"
         }
     )
-    def write_file(path: str, content: str, overwrite: bool = False) -> bool:
+    def write_file(path: str, content: str, overwrite: bool = False):
         """Write content to a file"""
         logger.debug(f"Writing file: {path}, overwrite: {overwrite}\nContent: {content}")
         try:
@@ -88,12 +88,12 @@ class TerminalOperations:
     
     @staticmethod
     @openai_function_wrapper(
-        function_description="Delete a file",
-        parameter_descriptions={
+        funct_descript="Delete a file",
+        param_descript={
             "path": "Path to the file to delete"
         }
     )
-    def delete_file(path: str) -> bool:
+    def delete_file(path: str):
         """Delete a file"""
         logger.debug(f"Deleting file: {path}")
         try:
@@ -107,12 +107,12 @@ class TerminalOperations:
     
     @staticmethod
     @openai_function_wrapper(
-        function_description="Create a new directory",
-        parameter_descriptions={
+        funct_descript="Create a new directory",
+        param_descript={
             "path": "Path where to create the directory"
         }
     )
-    def create_directory(path: str) -> bool:
+    def create_directory(path: str):
         """Create a directory"""
         logger.debug(f"Creating directory: {path}")
         try:
@@ -126,8 +126,8 @@ class TerminalOperations:
 
     @staticmethod
     @openai_function_wrapper(
-        function_description="Execute any PowerShell command and returns the command output (stdout)",
-        parameter_descriptions={
+        funct_descript="Execute any PowerShell command and returns the command output (stdout)",
+        param_descript={
             "command": "The PowerShell command to execute",
             "timeout": "Maximum execution time in seconds"
         }

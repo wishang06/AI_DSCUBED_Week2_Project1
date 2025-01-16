@@ -2,21 +2,46 @@ from typing import Any, List, Optional, Union, Callable
 
 from loguru import logger
 
-from src.clients.anthropic_client import ClientAnthropic
+from src.types.callbacks import Callback
+from src.utils.callbacks import DummieCallback, CLICallback
 from src.clients.openai_client import ClientOpenAI
 from src.core.store import BasicChatContextStore, ContextStore
 from src.tool_calling.tool_calling import (
+    ToolManager,
     create_tools_lookup,
     create_tools_schema,
     execute_function,
     parse_functions,
 )
 from src.types.model_config import LLMInit
-from src.utils.callbacks import CLICallback, DummieCallback
 
-from src.tool_calling import ToolEngine
+class ToolCallEngine:
+    def __init__(self, client: ClientOpenAI,
+                 model_name: str,
+                 tools: List[callable],
+                 callback: Callback = DummieCallback()):
+        self.client = client
+        self.model_name = model_name
+        self.store = ContextStore()
+        self.callback = callback
+        self.tool_manager = ToolManager(tools, self.store.store_function_call_result, self.callback)
 
-main = ToolEngine()
+    def execute(self, prompt: str):
+        with self.callback as loading:
+            loading.update_status("Getting LLM Response...")
+            self.store.store_string(prompt, "user")
+            response = self.client.create_tool_completion(
+                self.model_name,
+                self.store.retrieve(),
+                tools=self.tool_manager.tools_schema
+            )
+            logger.debug(f"Response: {response}")
+            if response.stop_reason == "tool_calls":
+                self.store.store_tool_response(response)
+                self.tool_manager.execute_responses(response.tool_calls)
+            else:
+                self.store.store_response(response, "assistant")
+            return response
 
 class AgentEngine:
     def __init__(
@@ -162,13 +187,10 @@ class AgentEngine:
 
     def add_agent_tools(self, function: Callable):
         self.agent_tools.append(function)
-                                    
-
-
 
 class LinearAgentEngine:
     def __init__(self,
-                 client: Union[ClientOpenAI, ClientAnthropic],
+                client: ClientOpenAI,
                 model_name: str,
                 system_prompt: Optional[str] = None,
                 tools: Optional[list[callable]] = None,
@@ -307,10 +329,9 @@ class LinearAgentEngine:
         """
         self.agent_tools.extend(tools)
 
-
 class ToolEngine:
     def __init__(self, 
-                client: Union[ClientOpenAI, ClientAnthropic],
+                client: Union[ClientOpenAI],
                 model_name: str,
                 system_prompt: Optional[str] = None,
                 instructions: Optional[List[str]] = None,
@@ -415,10 +436,9 @@ class ToolEngine:
         """
         self.store.set_system_prompt(system_prompt)
 
-
 class BasicChatContextEngine():
     def __init__(self, 
-                client: Union[ClientOpenAI, ClientAnthropic],
+                client: Union[ClientOpenAI],
                 model_name: str,
                 system_prompt: Optional[str] = None):
         self.client = client

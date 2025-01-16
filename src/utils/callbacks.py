@@ -34,7 +34,7 @@ class CLICallback(Callback):
     
     def update_status(self, message: str) -> None:
         if self.loading:
-            self.loading.update(message)
+            self.loading.update_status(message)
     
     def get_input(self, message: str) -> str:
         return self.cli.get_input(message)

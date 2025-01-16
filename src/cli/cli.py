@@ -26,10 +26,9 @@ Type 'help' for available commands
 Type 'exit' to quit
 """
 
-    def clear_terminal(self):
-        """Clear the terminal screen."""
-        os.system('cls' if os.name == 'nt' else 'clear')
-
+    def clear_messages(self):
+        """Clear all stored messages."""
+        self.messages = []
 
     def add_message(self, content: str, author: str, style: str):
         """Add a message to the message list."""
@@ -63,7 +62,6 @@ Type 'exit' to quit
                 border_style=msg["style"],
                 box=box.ROUNDED
             ))
-
 
     def print_message(self, content: str, author:str, style: str):
         """Print a boxed message with an author."""

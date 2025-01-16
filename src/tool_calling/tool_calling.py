@@ -2,6 +2,10 @@ from typing import List, Callable, Dict, Any
 from openai.types.chat.chat_completion_message_tool_call import ChatCompletionMessageToolCall
 import inspect
 import json
+from loguru import logger
+from pprint import pformat
+
+from src.types.callbacks import Callback
 
 # ====== Function Calling Decorator ======
 
@@ -22,6 +26,7 @@ def openai_function_wrapper(
                 self.parameter_descriptions = param_descript
                 self.enum_parameters = enum_parameters
                 self.required_parameters = required_parameters
+                self.strict = strict
                 self.output = {
                     "type": "function",
                     "function": {
@@ -46,6 +51,9 @@ def openai_function_wrapper(
             }
 
             def _inspect_parameters(self):
+                """
+                Inspect the function signature and create a schema for the parameters
+                """
                 signature = inspect.signature(self.funct)
                 for name, param in signature.parameters.items():
                     param_info = {
@@ -56,14 +64,23 @@ def openai_function_wrapper(
                             else "string"
                         ),
                     }
-                    if name in self.enum_parameters:
-                        param_info["enum"] = self.enum_parameters[name]
+                    if self.enum_parameters:
+                        if name in self.enum_parameters:
+                            param_info["enum"] = self.enum_parameters[name]
                     self.output["function"]["parameters"]["properties"][
                         name
                     ] = param_info
-                    if param.default == inspect.Parameter.empty:
-                        if name not in self.output["function"]["parameters"]["required"]:
-                            self.output["function"]["parameters"]["required"].append(name)
+                    if self.strict:
+                        # openai recommends to use strict, so this is the default and 99%
+                        self.output["function"]["parameters"]["required"].append(name)
+                    else:
+                        # if not strict, required parameters are those specified in the function signature
+                        if name in self.required_parameters:
+                            continue
+                        # if the parameter does not have a default value, it is required
+                        if param.default == inspect.Parameter.empty:
+                            if name not in self.output["function"]["parameters"]["required"]:
+                                self.output["function"]["parameters"]["required"].append(name)
 
             def __call__(self, *args, **kwargs):
                 return self.funct(*args, **kwargs)
@@ -75,7 +92,7 @@ def openai_function_wrapper(
 # ====== Tool Manager Class ======
 
 class ToolManager:
-    def __init__(self, tools: List[Callable], store_result: Callable):
+    def __init__(self, tools: List[Callable], store_result: Callable, callback: Callback):
         """
         Args:
             tools: List of functions to be used as tools
@@ -85,14 +102,27 @@ class ToolManager:
         self.tools_schema = create_tools_schema(tools)
         self.tools_lookup = create_tools_lookup(tools)
         self.store_result = store_result
+        self.callback = callback
+        logger.debug(f"Tool Manager initialized with {len(tools)} tools")
+        logger.debug(f"Tools schema: {pformat(self.tools_schema)}")
 
     def execute_responses(self, calls: List[ChatCompletionMessageToolCall]):
         for call in calls:
-            result = execute_function(call, tools_lookup=self.tools_lookup)
-            self.store_result({"role": "tool",
-                           "tool_call_id": call.id,
-                           "name": call.function.name,
-                           "content": str(result)})
+            self.callback.update_status(f"Executing function {call.function.name}...")
+            try:
+                result = execute_function(call, tools_lookup=self.tools_lookup)
+                logger.info(f"Successfully executed function {call.function.name}")
+            except Exception as e:
+                logger.info(f"Error executing function {call.function.name}: {e}")
+                result = f"Error executing function {call.function.name}: {e}"
+            self.callback.execute(message=result, title=call.function.name)
+            result = {
+                "role": "tool",
+                "tool_call_id": call.id,
+                "name": call.function.name,
+                "content": str(result)}
+            self.store_result(result)
+            logger.info(f"Stored function call result: {result}")
 
 # ====== Tool Manager Helper Functions ======
 
@@ -122,4 +152,4 @@ def execute_function(function_object, tools_lookup: Dict[str, callable]):
     function = tools_lookup[function_object.function.name]
     kwargs = json.loads(function_object.function.arguments)
     result = function(**kwargs)
-    return result
+    return str(result)

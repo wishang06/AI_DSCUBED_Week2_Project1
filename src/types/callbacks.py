@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 
 class Callback(ABC):
     @abstractmethod
-    def execute(self, message: str) -> None:
+    def execute(self, **kwargs) -> None:
         """Basic message execution"""
         pass
     
