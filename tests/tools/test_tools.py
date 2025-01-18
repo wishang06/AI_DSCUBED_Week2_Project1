@@ -1,6 +1,6 @@
 import pytest
-from src.tools.calculator import Calculator
-from src.tools.terminal import TerminalOperations
+from tools.calculator import Calculator
+from tools.core.terminal import TerminalOperations
 import os
 
 def test_calculator_add():

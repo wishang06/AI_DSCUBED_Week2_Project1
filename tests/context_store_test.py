@@ -1,6 +1,6 @@
 import pytest
-from src.core.store import ContextStore
-from src.clients.response import ResponseWrapperOpenAI
+from src.framework.core.store import ContextStore
+from src.framework.clients.response import ResponseWrapperOpenAI
 from tests.testing_utils import read_openai_response
 
 # Test response files

@@ -1,14 +1,13 @@
-from src.tool_calling.tool_calling import (
+from src.framework.tool_calling import (
     openai_function_wrapper,
     create_tools_schema,
     create_tools_lookup,
     parse_functions,
     execute_function,
 )
-from src.clients.openai_client import ClientOpenAI
-from src.setup import hello, OPENAI_API_KEY
-from openai import OpenAI
-import rich
+from src.framework.clients import ClientOpenAI
+from src.framework.setup import hello, OPENAI_API_KEY
+
 hello()
 
 @openai_function_wrapper(

@@ -1,6 +1,5 @@
 import pytest
-from src.clients.response import ResponseWrapperAnthropic, ResponseWrapperOpenAI
-from src.exceptions import ResponseConversionError
+from src.framework.clients.response import ResponseWrapperOpenAI
 from tests.testing_utils import read_openai_response, read_anthropic_response
 
 # Assuming these files exist based on your provided structure

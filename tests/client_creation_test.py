@@ -1,6 +1,6 @@
 import pytest
-from src.clients.anthropic_client import ClientAnthropic
-from src.clients.openai_client import ClientOpenAI
+from src.framework.clients import ClientAnthropic
+from src.framework.clients import ClientOpenAI
 
 PROJECT_ID = "test-project"
 GEMINI_LOCATION = "australia-southeast1"

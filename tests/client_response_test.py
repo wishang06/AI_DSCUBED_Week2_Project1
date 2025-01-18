@@ -1,7 +1,6 @@
-import pytest
-from src.clients.anthropic_client import ClientAnthropic
-from src.clients.openai_client import ClientOpenAI
-from src.clients.response import ResponseWrapper
+from src.framework.clients import ClientAnthropic
+from src.framework.clients import ClientOpenAI
+from src.framework.clients.response import ResponseWrapper
 import dotenv
 import os
 import pprint

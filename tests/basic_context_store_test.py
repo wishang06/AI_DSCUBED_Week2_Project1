@@ -1,6 +1,6 @@
 import pytest
-from src.core.store import BasicChatContextStore
-from src.clients.response import ResponseWrapperOpenAI
+from src.framework.core.store import BasicChatContextStore
+from src.framework.clients.response import ResponseWrapperOpenAI
 from tests.testing_utils import read_openai_response
 
 # Assuming these files exist based on your provided structure

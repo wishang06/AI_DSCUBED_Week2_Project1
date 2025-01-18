@@ -1,6 +1,6 @@
 import pytest
 import os
-from src.tools.terminal import TerminalOperations
+from tools.core.terminal import TerminalOperations
 
 # Create a temporary directory for testing file operations
 @pytest.fixture(scope="module")

@@ -1,10 +1,9 @@
 import pytest
-from unittest.mock import MagicMock, patch
-from src.core.engine import BasicChatContextEngine
-from src.clients.openai_client import ClientOpenAI
-from src.clients.anthropic_client import ClientAnthropic
-from src.core.store import BasicChatContextStore
-from src.clients.response import ResponseWrapperOpenAI
+from unittest.mock import patch
+from src.framework.core.engine import BasicChatContextEngine
+from src.framework.clients import ClientOpenAI
+from src.framework.core.store import BasicChatContextStore
+from src.framework.clients.response import ResponseWrapperOpenAI
 
 class TestBasicContextEngine:
     @pytest.fixture

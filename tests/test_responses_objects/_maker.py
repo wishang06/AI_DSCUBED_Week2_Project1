@@ -1,8 +1,7 @@
 import dotenv
 import json
 import os
-import sys
-from src.clients.openai_client import ClientOpenAI
+from src.framework.clients import ClientOpenAI
 
 FILE_PATH = os.path.abspath(__file__)
 SCRIPT_DIR = os.path.dirname(FILE_PATH)

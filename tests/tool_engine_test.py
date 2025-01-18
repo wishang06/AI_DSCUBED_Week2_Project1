@@ -1,14 +1,14 @@
 import pytest
 from unittest.mock import Mock, MagicMock
-from src.core.engine import ToolEngine
-from src.clients.response import ResponseWrapperOpenAI
+from src.framework.core.engine import ToolEngine
+from src.framework.clients.response import ResponseWrapperOpenAI
 from tests.testing_utils import read_openai_response
 
 # Test response files
 GENERIC_RESPONSE_FILE = "tests/test_responses_objects/openai_response_generic.json"
 TOOL_RESPONSE_FILE = "tests/test_responses_objects/openai_response_tool_call.json"
 
-from src.tool_calling.tool_calling import openai_function_wrapper
+from src.framework.tool_calling import openai_function_wrapper
 
 @openai_function_wrapper(
     function_description="Get the current weather in a city",
