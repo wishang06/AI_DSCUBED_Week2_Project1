@@ -5,7 +5,7 @@ import json
 from loguru import logger
 from pprint import pformat
 
-from src.framework.types.callbacks import Callback
+from src.framework.types.callbacks import StatusCallback
 
 # ====== Function Calling Decorator ======
 
@@ -92,7 +92,11 @@ def openai_function_wrapper(
 # ====== Tool Manager Class ======
 
 class ToolManager:
-    def __init__(self, tools: List[Callable], store_result: Callable, callback: Callback):
+    def __init__(self,
+                 tools: List[Callable],
+                 store_result: Callable,
+                 callback: StatusCallback,
+                 debug: bool = False):
         """
         Args:
             tools: List of functions to be used as tools
@@ -103,11 +107,16 @@ class ToolManager:
         self.tools_lookup = create_tools_lookup(tools)
         self.store_result = store_result
         self.callback = callback
+        self.debug = debug
         logger.debug(f"Tool Manager initialized with {len(tools)} tools")
         logger.debug(f"Tools schema: {pformat(self.tools_schema)}")
 
     def execute_responses(self, calls: List[ChatCompletionMessageToolCall]):
         for call in calls:
+            if self.debug:
+                self.callback.execute(message=f"Executing function {call.function.name} with arguments {call.function.arguments}",
+                                      title=call.function.name,
+                                      style="yellow")
             self.callback.update_status(f"Executing function {call.function.name}...")
             try:
                 result = execute_function(call, tools_lookup=self.tools_lookup)
@@ -115,7 +124,9 @@ class ToolManager:
             except Exception as e:
                 logger.info(f"Error executing function {call.function.name}: {e}")
                 result = f"Error executing function {call.function.name}: {e}"
-            self.callback.execute(message=result, title=call.function.name)
+            self.callback.execute(message=result,
+                                  title=call.function.name,
+                                  style="yellow")
             result = {
                 "role": "tool",
                 "tool_call_id": call.id,

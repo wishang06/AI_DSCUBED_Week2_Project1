@@ -18,14 +18,11 @@ class ContextStore:
     def store_response(self, response: ResponseWrapper, role: str):
         self.response_log.append(response)
         self.chat_history.append({"role": role, "content": response.content})
-        # logfire.info(f"Stored response: {response.content}")
-        
 
     def store_string(self, string: str, role: str):
         self.response_log.append([role, string])
         self.chat_history.append({"role": role, "content": string})
-        # logfire.info(f"Stored string: {string}")
-        
+
     def store_tool_response(self, response: ResponseWrapper):
         """Store a tool response in the chat history"""
         self.response_log.append(response)
@@ -41,7 +38,6 @@ class ContextStore:
         """
         self.response_log.append(result)
         self.chat_history.append(result)
-        # logfire.info(f"Stored function call result: {result}")
 
     def retrieve(self):
         result = self.chat_history.copy()

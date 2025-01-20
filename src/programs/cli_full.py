@@ -8,7 +8,7 @@ from src.framework.core.engine import ToolEngine
 from src.interfaces.cli import ToolCLI
 from src.framework.clients import ClientOpenAI
 from tools.core.terminal import TerminalOperations
-from src.framework.utils import CLICallback
+from src.framework.utils import CLIStatusCallback
 
 load_dotenv()
 
@@ -27,15 +27,14 @@ with open(SYSTEM_PROMPT_PATH, "r") as file:
     system_prompt = file.read()
 terminal = TerminalOperations("environment")
 
-mode = sys.argv[1]
-
-def main():
+def main(args):
     # Initialize CLI with custom menu text
     menu_text = """
     Tool-Enabled Chat Interface
     """
+    mode = args[0]
     cli = ToolCLI(menu_text=menu_text)
-    callback = CLICallback(cli)
+    callback = CLIStatusCallback(cli)
     engine = ToolEngine(
         client,
         MODEL_NAME,
@@ -108,4 +107,6 @@ def main():
     finally:
         cli.print_info("Goodbye!")
 
-main()
+if __name__ == "__main__":
+    mode = [sys.argv[1]]
+    main(mode)

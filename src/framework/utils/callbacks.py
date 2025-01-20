@@ -1,5 +1,6 @@
-from src.framework.types.callbacks import Callback
-class DummieCallback(Callback):
+from src.framework.types.callbacks import StatusCallback, SimpleCallback
+
+class DummieStatusCallback(StatusCallback):
     def execute(self, message: str) -> None:
         pass
     
@@ -15,13 +16,13 @@ class DummieCallback(Callback):
     def get_input(self, message: str) -> str:
         return ""
 
-class CLICallback(Callback):
+class CLIStatusCallback(StatusCallback):
     def __init__(self, cli):
         self.cli = cli
         self.loading = None
         
-    def execute(self, message: str, title: str) -> None:
-        self.cli.print_info(message)
+    def execute(self, message: str, title: str, style: str) -> None:
+        self.cli.print_message(message, title, style)
     
     def __enter__(self):
         self.loading = self.cli.show_loading("Engine starting...").__enter__()
@@ -38,3 +39,10 @@ class CLICallback(Callback):
     
     def get_input(self, message: str) -> str:
         return self.cli.get_input(message)
+
+class FunctionStudioSimpleCallback(SimpleCallback):
+    def __init__(self):
+        self.data = {}
+
+    def do(self, key: str, data: str):
+        self.data[key] = data

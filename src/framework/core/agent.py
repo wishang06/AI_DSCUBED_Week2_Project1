@@ -3,17 +3,17 @@ from src.framework.tool_calling.tool_calling import (
 )
 from src.framework.types.model_config import LLMInit
 from src.framework.core.engine import AgentEngine
-from src.framework.types.callbacks import Callback
+from src.framework.types.callbacks import StatusCallback
 
 
 
 class BasicAgent():
-    def __init__(self, config: LLMInit, callback: Callback):
+    def __init__(self, config: LLMInit, callback: StatusCallback):
         """_summary_
 
         Args:
             config (LLMInit): _description_
-            callback (Callback): _description_
+            callback (StatusCallback): _description_
         """
         self.callback = callback 
         self.config = config

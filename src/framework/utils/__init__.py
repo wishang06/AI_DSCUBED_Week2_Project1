@@ -1,1 +1,1 @@
-from .callbacks import DummieCallback, CLICallback
+from .callbacks import DummieStatusCallback, CLIStatusCallback

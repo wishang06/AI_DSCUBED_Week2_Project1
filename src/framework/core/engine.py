@@ -2,8 +2,8 @@ from typing import Any, List, Optional, Union, Callable
 
 from loguru import logger
 
-from src.framework.types.callbacks import Callback
-from src.framework.utils.callbacks import DummieCallback
+from src.framework.types.callbacks import StatusCallback
+from src.framework.utils.callbacks import DummieStatusCallback
 from src.framework.clients.openai_client import ClientOpenAI
 from src.framework.core.store import BasicChatContextStore, ContextStore
 from src.framework.tool_calling import *
@@ -17,9 +17,26 @@ class ToolEngine:
             model_name: str,
             tools: List[callable],
             mode: str = "normal",
-            callback: Callback = DummieCallback(),
+            callback: StatusCallback = DummieStatusCallback(),
+            system_prompt: Optional[str] = None,
+            debug: bool = False
     ):
         self.model_name = model_name
+        self.client = client
+        self.callback = callback
+        self.debug = debug
+        self._initialize_mode(mode)
+        self.store = ContextStore()
+        self.tool_manager = ToolManager(
+            tools,
+            self.store.store_function_call_result,
+            self.callback,
+            debug=self.debug
+        )
+        if system_prompt:
+            self.store.set_system_prompt(system_prompt)
+
+    def _initialize_mode(self, mode: str):
         self.style = mode
         if mode == "normal":
             self._execute = self.execute_normal
@@ -29,12 +46,8 @@ class ToolEngine:
             self._execute = self.execute_chain
         elif mode == "linear_chain":
             self._execute = self.execute_linear_chain
-        self.client = client
-        self.store = ContextStore()
-        self.callback = callback
-        self.tool_manager = ToolManager(
-            tools, self.store.store_function_call_result, self.callback
-        )
+        else:
+            raise ValueError(f"Invalid mode: {mode}")
 
     def execute(self, prompt: str):
         return self._execute(prompt)
@@ -131,7 +144,7 @@ class ToolCallEngine:
     def __init__(self, client: ClientOpenAI,
                  model_name: str,
                  tools: List[callable],
-                 callback: Callback = DummieCallback()):
+                 callback: StatusCallback = DummieStatusCallback()):
         self.client = client
         self.model_name = model_name
         self.store = ContextStore()
@@ -162,7 +175,7 @@ class AgentEngine:
             agent_system_prompt: Optional[str] = None,
             initial_tools: Optional[List[callable]] = None,
             initial_prompts: Optional[List[str]] = None,
-            callback: Any = DummieCallback()
+            callback: Any = DummieStatusCallback()
     ):
         self.client = initial_llm_config.client
         self.model_name = initial_llm_config.model_name

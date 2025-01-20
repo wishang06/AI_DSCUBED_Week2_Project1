@@ -1,7 +1,7 @@
 
 from abc import ABC, abstractmethod
 
-class Callback(ABC):
+class StatusCallback(ABC):
     @abstractmethod
     def execute(self, **kwargs) -> None:
         """Basic message execution"""
@@ -27,4 +27,12 @@ class Callback(ABC):
     @abstractmethod
     def get_input(self, message: str) -> str:
         """Get input from user"""
+        pass
+
+class SimpleCallback(ABC):
+    """
+    Simply sends a message to the stack above
+    """
+    @abstractmethod
+    def do(self, **kwargs):
         pass
