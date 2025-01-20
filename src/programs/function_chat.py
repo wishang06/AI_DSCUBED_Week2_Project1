@@ -9,6 +9,7 @@ from src.interfaces.cli import ToolCLI
 from src.framework.clients import ClientOpenAI
 from tools.core.terminal import TerminalOperations
 from src.framework.utils import CLIStatusCallback
+from tools.pwsh import execute_command
 
 load_dotenv()
 
@@ -17,7 +18,7 @@ logger.add("outputs/logs/test.log")
 logger.info("Starting CLI Chat Terminal")
 
 MODEL_NAME = "gpt-4o-mini"
-SYSTEM_PROMPT_PATH = "environment/prompts/terminal_system.md"
+SYSTEM_PROMPT_PATH = "prompts/core/agents/function_maker.md"
 
 console = Console()
 api_key = os.getenv("OPENAI_API_KEY")
@@ -25,14 +26,14 @@ client = ClientOpenAI.create_openai(api_key)
 
 with open(SYSTEM_PROMPT_PATH, "r") as file:
     system_prompt = file.read()
-terminal = TerminalOperations("environment")
+terminal = TerminalOperations(".")
 
-def main(args):
+def main(mode_arg, system_prompt_arg):
     # Initialize CLI with custom menu text
     menu_text = """
     Tool-Enabled Chat Interface
     """
-    mode = args[0]
+    mode = mode
     cli = ToolCLI(menu_text=menu_text)
     callback = CLIStatusCallback(cli)
     engine = ToolEngine(
@@ -44,10 +45,11 @@ def main(args):
             terminal.write_file,
             terminal.delete_file,
             terminal.create_directory,
-            terminal.execute_command,
+            execute_command,
         ],
         callback=callback,
-        mode=mode
+        mode=mode,
+        system_prompt=system_prompt
     )
     try:
         # Main chat loop

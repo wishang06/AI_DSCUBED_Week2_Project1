@@ -7,8 +7,7 @@
         "convert_units",
         "calculate_trip",
         "analyze_text"
-      ],
-      "relative_import": true
+      ]
     },
     {
       "from": "tools.core.terminal",
@@ -21,8 +20,7 @@
       "methods": [
         "list_directory",
         "read_file"
-      ],
-      "relative_import": true
+      ]
     }
   ],
   "model": "gpt-4o-mini",
@@ -32,16 +30,6 @@
       "name": "Weather and Files",
       "description": "Test combining weather forecast with file operations",
       "prompt": "What files are in the current directory? Also, what's the weather like in Seattle tomorrow?"
-    },
-    {
-      "name": "Read and Analyze",
-      "description": "Test reading a file and analyzing its contents",
-      "prompt": "Can you read the README.md file and analyze its text?"
-    },
-    {
-      "name": "Unit Conversion and Trip Planning",
-      "description": "Test unit conversion with trip planning",
-      "prompt": "I need to drive 100 miles. Can you convert that to kilometers and tell me how long it will take at 80 km/h if I start at 15:30?"
     }
   ]
 }

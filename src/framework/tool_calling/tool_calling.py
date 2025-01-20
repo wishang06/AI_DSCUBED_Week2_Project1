@@ -114,7 +114,7 @@ class ToolManager:
     def execute_responses(self, calls: List[ChatCompletionMessageToolCall]):
         for call in calls:
             if self.debug:
-                self.callback.execute(message=f"Executing function {call.function.name} with arguments {call.function.arguments}",
+                self.callback.execute(message=f"Executing with arguments {call.function.arguments}",
                                       title=call.function.name,
                                       style="yellow")
             self.callback.update_status(f"Executing function {call.function.name}...")

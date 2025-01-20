@@ -67,9 +67,9 @@ def function_studio(
 
 
 @app.command()
-def cli_full(
+def function_chat(
         mode: str = typer.Argument("normal", help="Engine mode (normal, minimal, chain, linear_chain)"),
-        args: Optional[List[str]] = typer.Argument(None, help="Additional arguments")
+        system_prompt: str = typer.Argument(">>>", help="System prompt")
 ):
     """Run the full CLI interface"""
     try:
@@ -77,7 +77,7 @@ def cli_full(
         if args:
             all_args.extend(args)
 
-        program_path = Path(__file__).parent / "cli_full.py"
+        program_path = Path(__file__).parent / "function_chat.py"
         program_module = import_module_from_path(program_path)
         program_module.main(args=all_args)
     except Exception as e:

@@ -228,9 +228,9 @@ class FunctionStudio:
             except Exception as e:
                 console.print(f"[red]Error running test case: {e}[/red]")
 
-            if i < len(self.config['test_cases']):
-                if not Confirm.ask("\nContinue to next test case?"):
-                    break
+            # if i < len(self.config['test_cases']):
+            #     if not Confirm.ask("\nContinue to next test case?"):
+            #         break
 
 
 def main(config_path: Optional[str] = None):

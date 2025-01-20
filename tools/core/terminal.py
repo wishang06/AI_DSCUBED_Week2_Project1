@@ -124,47 +124,47 @@ class TerminalOperations:
         except Exception as e:
             raise ValueError(f"Error creating directory: {str(e)}")
 
-    @staticmethod
-    @openai_function_wrapper(
-        funct_descript="Execute any PowerShell command and returns the command output (stdout)",
-        param_descript={
-            "command": "The PowerShell command to execute",
-            "timeout": "Maximum execution time in seconds"
-        }
-    )
-    def execute_command(command: str, timeout: int = 30) -> str:
-        """Execute a PowerShell command and return the stdout output
-        
-        Args:
-            command: The PowerShell command to execute
-            timeout: Maximum execution time in seconds (default 30)
-            
-        Returns:
-            str: Standard output from the command execution
-            
-        Raises:
-            ValueError: If command execution fails
-        """
-        logger.debug(f"Executing PowerShell command: {command}")
-        try:
-            import subprocess
-            
-            # Execute PowerShell command with timeout
-            process = subprocess.run(
-                ["powershell", "-Command", command],
-                capture_output=True,
-                text=True,
-                timeout=timeout
-            )
-            
-            if process.returncode != 0:
-                raise ValueError(f"Command failed: {process.stderr} {process.stdout}")
-                
-            return process.stdout.strip()
-            
-        except subprocess.TimeoutExpired:
-            raise ValueError(f"Command timed out after {timeout} seconds")
-        except subprocess.SubprocessError as e:
-            raise ValueError(f"Error executing command: {str(e)}")
-        except Exception as e:
-            raise ValueError(f"Unexpected error: {str(e)}")
+    # @staticmethod
+    # @openai_function_wrapper(
+    #     funct_descript="Execute any PowerShell command and returns the command output (stdout)",
+    #     param_descript={
+    #         "command": "The PowerShell command to execute",
+    #         "timeout": "Maximum execution time in seconds"
+    #     }
+    # )
+    # def execute_command(command: str, timeout: int = 30) -> str:
+    #     """Execute a PowerShell command and return the stdout output
+    #
+    #     Args:
+    #         command: The PowerShell command to execute
+    #         timeout: Maximum execution time in seconds (default 30)
+    #
+    #     Returns:
+    #         str: Standard output from the command execution
+    #
+    #     Raises:
+    #         ValueError: If command execution fails
+    #     """
+    #     logger.debug(f"Executing PowerShell command: {command}")
+    #     try:
+    #         import subprocess
+    #
+    #         # Execute PowerShell command with timeout
+    #         process = subprocess.run(
+    #             ["powershell", "-Command", command],
+    #             capture_output=True,
+    #             text=True,
+    #             timeout=timeout
+    #         )
+    #
+    #         if process.returncode != 0:
+    #             raise ValueError(f"Command failed: {process.stderr} {process.stdout}")
+    #
+    #         return process.stdout.strip()
+    #
+    #     except subprocess.TimeoutExpired:
+    #         raise ValueError(f"Command timed out after {timeout} seconds")
+    #     except subprocess.SubprocessError as e:
+    #         raise ValueError(f"Error executing command: {str(e)}")
+    #     except Exception as e:
+    #         raise ValueError(f"Unexpected error: {str(e)}")
