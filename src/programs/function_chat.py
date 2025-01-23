@@ -1,8 +1,9 @@
 import os
-import sys
+from typing import Optional, List
 from dotenv import load_dotenv
 from rich.console import Console
 from loguru import logger
+from pydantic import BaseModel
 
 from src.framework.core.engine import ToolEngine
 from src.interfaces.cli import ToolCLI
@@ -11,104 +12,181 @@ from tools.core.terminal import TerminalOperations
 from src.framework.utils import CLIStatusCallback
 from tools.pwsh import execute_command
 
-load_dotenv()
-
+# Configure logging
 logger.remove()
-logger.add("outputs/logs/test.log")
-logger.info("Starting CLI Chat Terminal")
+logger.add("outputs/logs/function_chat.log", rotation="10 MB", level="INFO")
+logger.info("Starting Function Chat")
 
-MODEL_NAME = "gpt-4o-mini"
-SYSTEM_PROMPT_PATH = "prompts/core/agents/function_maker.md"
+# Constants
+DEFAULT_MODEL = "gpt-4o-mini"
+DEFAULT_SYSTEM_PROMPT_PATH = "prompts/core/agents/function_maker.md"
 
-console = Console()
-api_key = os.getenv("OPENAI_API_KEY")
-client = ClientOpenAI.create_openai(api_key)
 
-with open(SYSTEM_PROMPT_PATH, "r") as file:
-    system_prompt = file.read()
-terminal = TerminalOperations(".")
+class FunctionChatConfig(BaseModel):
+    """Configuration model for FunctionChat"""
+    mode: str
+    model_name: str = DEFAULT_MODEL
+    system_prompt_path: str = DEFAULT_SYSTEM_PROMPT_PATH
+    api_key: Optional[str] = None
 
-def main(mode_arg, system_prompt_arg):
-    # Initialize CLI with custom menu text
-    menu_text = """
-    Tool-Enabled Chat Interface
-    """
-    mode = mode
-    cli = ToolCLI(menu_text=menu_text)
-    callback = CLIStatusCallback(cli)
-    engine = ToolEngine(
-        client,
-        MODEL_NAME,
-        tools=[
-            terminal.list_directory,
-            terminal.read_file,
-            terminal.write_file,
-            terminal.delete_file,
-            terminal.create_directory,
-            execute_command,
-        ],
-        callback=callback,
-        mode=mode,
-        system_prompt=system_prompt
-    )
-    try:
-        # Main chat loop
-        count = 0
-        while True:
-            try:
-                # Get user input
-                user_input = cli.get_input()
 
-                if user_input.lower() in ["exit", "quit"]:
-                    break
+class FunctionChat:
+    def __init__(self, config: FunctionChatConfig):
+        """Initialize FunctionChat with configuration"""
+        self.config = config
+        self.console = Console()
+        self.api_key = config.api_key or os.getenv("OPENAI_API_KEY")
+        if not self.api_key:
+            raise ValueError("No API key provided and OPENAI_API_KEY not found in environment")
 
-                cli.add_message(user_input, "You", "blue")
-                count += 1
-                cli.redraw()
+        self.client = ClientOpenAI.create_openai(self.api_key)
+        self.terminal = TerminalOperations(".")
 
-                # Process the request
-                # Add the instruction and run the engine
-                engine.execute(user_input)
+        # Initialize CLI interface
+        self.cli = self._setup_cli()
+        self.callback = CLIStatusCallback(self.cli)
 
-                # Count starting from first message
+        # Initialize engine
+        self.engine = self._setup_engine()
 
-                # Get all messages since the user's input
-                messages = engine.store.retrieve()
+    def _setup_cli(self) -> ToolCLI:
+        """Set up the CLI interface"""
+        menu_text = """
+🤖 Function Chat Interface
 
-                # Load all messages into the CLI
-                for i in range(count, len(messages)):
-                    if isinstance(messages[count], dict):
-                        if messages[count].get("role") == "user":
-                            cli.add_message(
-                                messages[count].get("content"), "You", "blue"
-                            )
-                        elif messages[count].get("role") == "assistant":
-                            cli.add_message(
-                                messages[count].get("content"), "Assistant", "green"
-                            )
-                        elif messages[count].get("role") == "tool":
-                            cli.add_message(
-                                messages[count].get("content")[:500],
-                                messages[count].get("name"),
-                                "yellow",
-                            )
+Available commands:
+- exit/quit: Exit the program
+- clear: Clear chat history
+- help: Show this menu
+
+Type your message to begin...
+"""
+        return ToolCLI(menu_text=menu_text)
+
+    def _setup_engine(self) -> ToolEngine:
+        """Set up the tool engine"""
+        # Load system prompt
+        try:
+            with open(self.config.system_prompt_path, "r", encoding='utf-8') as file:
+                system_prompt = file.read()
+        except FileNotFoundError:
+            logger.warning(f"System prompt file not found at {self.config.system_prompt_path}")
+            system_prompt = "You are a helpful assistant that uses available tools."
+
+        return ToolEngine(
+            client=self.client,
+            model_name=self.config.model_name,
+            tools=[
+                self.terminal.list_directory,
+                self.terminal.read_file,
+                self.terminal.write_file,
+                self.terminal.delete_file,
+                self.terminal.create_directory,
+                execute_command,
+            ],
+            callback=self.callback,
+            mode=self.config.mode,
+            system_prompt=system_prompt
+        )
+
+    def _handle_special_commands(self, user_input: str) -> bool:
+        """Handle special commands, return True if handled"""
+        if user_input.lower() in ["exit", "quit"]:
+            self.cli.print_info("Goodbye! 👋")
+            return True
+        elif user_input.lower() == "clear":
+            self.engine.store.clear()
+            self.cli.clear_messages()
+            self.cli.print_info("Chat history cleared! 🧹")
+            return True
+        elif user_input.lower() == "help":
+            self.cli.redraw()
+            return True
+        return False
+
+    def _process_messages(self, count: int, messages: List[dict]):
+        """Process and display messages"""
+        for i in range(count, len(messages)):
+            msg = messages[i]
+            if isinstance(msg, dict):
+                if msg.get("role") == "user":
+                    self.cli.add_message(msg.get("content"), "You", "blue")
+                elif msg.get("role") == "assistant":
+                    self.cli.add_message(msg.get("content"), "Assistant", "green")
+                elif msg.get("role") == "tool":
+                    self.cli.add_message(
+                        msg.get("content")[:500],
+                        msg.get("name", "Tool"),
+                        "yellow"
+                    )
+
+    def run(self):
+        """Run the chat interface"""
+        try:
+            count = 1
+            while True:
+                try:
+                    # Get user input
+                    user_input = self.cli.get_input()
+
+                    # Handle special commands
+                    if self._handle_special_commands(user_input):
+                        if user_input.lower() in ["exit", "quit"]:
+                            break
+                        continue
+
+                    # Process regular input
+                    self.cli.add_message(user_input, "You", "blue")
                     count += 1
+                    self.cli.redraw()
 
-                cli.redraw()
+                    # Execute the request
+                    self.engine.execute(user_input)
 
-            except KeyboardInterrupt:
-                break
-            except Exception as e:
-                cli.print_error(f"Chat Error: {str(e)}")
-                cli.print_info("You can continue chatting or type 'exit' to quit.")
+                    # Process new messages
+                    messages = self.engine.store.retrieve()
+                    self._process_messages(count, messages)
+                    count = len(messages)
 
-    except KeyboardInterrupt:
-        cli.print_info("Interrupted by user.")
+                    self.cli.redraw()
+
+                except KeyboardInterrupt:
+                    if self.cli.get_input("Do you want to exit? (y/n): ").lower() == 'y':
+                        break
+                    continue
+                except Exception as e:
+                    logger.error(f"Error in chat loop: {str(e)}")
+                    self.cli.print_error(f"Error: {str(e)}")
+                    self.cli.print_info("You can continue chatting or type 'exit' to quit.")
+
+        except Exception as e:
+            logger.error(f"Fatal error: {str(e)}")
+            self.cli.print_error(f"Fatal error: {str(e)}")
+        finally:
+            logger.info("Shutting down Function Chat")
+
+
+def main(mode: str = "normal", model_name: str = DEFAULT_MODEL):
+    """Main entry point for the function chat"""
+    try:
+        load_dotenv()
+
+        config = FunctionChatConfig(
+            mode=mode,
+            model_name=model_name
+        )
+
+        chat = FunctionChat(config)
+        chat.run()
+
     except Exception as e:
-        cli.print_error(f"Fatal Error: {str(e)}")
-    finally:
-        cli.print_info("Goodbye!")
+        Console().print(f"[red]Error starting Function Chat: {str(e)}[/red]")
+        return 1
+    return 0
+
 
 if __name__ == "__main__":
-    mode = [sys.argv[1]]
-    main(mode)
+    import sys
+
+    mode = sys.argv[1] if len(sys.argv) > 1 else "normal"
+    sys.exit(main(mode=mode))
