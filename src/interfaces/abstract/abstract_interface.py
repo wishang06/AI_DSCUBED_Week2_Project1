@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Any
 
 class Interface(ABC):
     @abstractmethod
@@ -6,25 +7,19 @@ class Interface(ABC):
         pass
 
     @abstractmethod
-    def start(self) -> None:
+    def get(self, request: Any) -> str:
         pass
 
     @abstractmethod
-    def stop(self) -> None:
+    def out(self, content: Any) -> str:
         pass
 
-    @abstractmethod
-    def get_input(self, message: str) -> str:
+class DummyInterface(Interface):
+    def __init__(self, **kwargs):
         pass
 
-    @abstractmethod
-    def update_status(self, message: str) -> None:
-        pass
+    def get(self, request: Any) -> str:
+        return "DummyInterface get"
 
-    @abstractmethod
-    def __enter__(self):
-        pass
-
-    @abstractmethod
-    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-        pass
+    def out(self, content: Any) -> str:
+        return "DummyInterface out"

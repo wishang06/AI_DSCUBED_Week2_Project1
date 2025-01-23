@@ -1,10 +1,16 @@
-from typing import TypeVar, Callable
+from rich import print
+from rich.pretty import Pretty, pprint
+from rich.panel import Panel
+from rich.console import Console
 
-T = TypeVar('T')
+data = {
+    'data': 'value',
+    'nested': {
+        'key': 'value',
+        'list': [1, 2, 3],
+    },
+}
 
-def typed_wrapper(
-        func: Callable[..., T],
-        *args: Any,
-        **kwargs: Any
-) -> T:
-    return func(*args, **kwargs)
+
+console = Console()
+console.print(Panel(Pretty(data, expand_all=True), title="Data"))

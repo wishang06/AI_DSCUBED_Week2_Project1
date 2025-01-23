@@ -38,10 +38,7 @@ def import_module_from_path(path: Path):
 def function_studio(
         config_file: Path = typer.Argument(
             ...,
-            help="Path to studio test configuration file",
-            exists=True,
-            file_okay=True,
-            dir_okay=False,
+            help="Path to studio test configuration file"
         )
 ):
     """Run Function Studio with a test configuration file"""

@@ -4,6 +4,8 @@ import inspect
 import json
 from loguru import logger
 from pprint import pformat
+from src.framework.core.observer import EngineSubject
+from src.interfaces.abstract import Interface
 
 from src.framework.types.callbacks import StatusCallback
 
@@ -95,7 +97,7 @@ class ToolManager:
     def __init__(self,
                  tools: List[Callable],
                  store_result: Callable,
-                 callback: StatusCallback,
+                 subject: EngineSubject,
                  debug: bool = False):
         """
         Args:
@@ -106,33 +108,41 @@ class ToolManager:
         self.tools_schema = create_tools_schema(tools)
         self.tools_lookup = create_tools_lookup(tools)
         self.store_result = store_result
-        self.callback = callback
+        self.subject = subject
         self.debug = debug
         logger.debug(f"Tool Manager initialized with {len(tools)} tools")
         logger.debug(f"Tools schema: {pformat(self.tools_schema)}")
 
     def execute_responses(self, calls: List[ChatCompletionMessageToolCall]):
         for call in calls:
-            if self.debug:
-                self.callback.execute(message=f"Executing with arguments {call.function.arguments}",
-                                      title=call.function.name,
-                                      style="yellow")
-            self.callback.update_status(f"Executing function {call.function.name}...")
+            self.subject.notify({
+                "type": "function_call",
+                "tool_call_id": call.id,
+                "name": call.function.name,
+                "parameters": json.loads(call.function.arguments)
+            })
+            self.subject.notify({
+                "type": "status_update",
+                "message": f"Executing function {call.function.name}..."
+            })
             try:
                 result = execute_function(call, tools_lookup=self.tools_lookup)
                 logger.info(f"Successfully executed function {call.function.name}")
             except Exception as e:
                 logger.info(f"Error executing function {call.function.name}: {e}")
                 result = f"Error executing function {call.function.name}: {e}"
-            self.callback.execute(message=result,
-                                  title=call.function.name,
-                                  style="yellow")
             result = {
                 "role": "tool",
                 "tool_call_id": call.id,
                 "name": call.function.name,
                 "content": str(result)}
             self.store_result(result)
+            self.subject.notify({
+                "type": "function_result",
+                "tool_call_id": call.id,
+                "name": call.function.name,
+                "content": result
+            })
             logger.info(f"Stored function call result: {result}")
 
 # ====== Tool Manager Helper Functions ======

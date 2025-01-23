@@ -8,7 +8,7 @@ from src.framework.clients.openai_client import ClientOpenAI
 from src.framework.core.store import BasicChatContextStore, ContextStore
 from src.framework.tool_calling import *
 from src.framework.types.model_config import LLMInit
-
+from src.framework.core.observer import EngineSubject, Observer
 
 class ToolEngine:
     def __init__(
@@ -17,35 +17,34 @@ class ToolEngine:
             model_name: str,
             tools: List[callable],
             mode: str = "normal",
-            callback: StatusCallback = DummieStatusCallback(),
             system_prompt: Optional[str] = None,
-            debug: bool = False
     ):
         self.model_name = model_name
         self.client = client
-        self.callback = callback
-        self.debug = debug
+        self.subject = EngineSubject()
         self._initialize_mode(mode)
         self.store = ContextStore()
         self.tool_manager = ToolManager(
             tools,
             self.store.store_function_call_result,
-            self.callback,
-            debug=self.debug
+            self.subject,
         )
         if system_prompt:
             self.store.set_system_prompt(system_prompt)
 
+    def subscribe(self, observer: Observer):
+        self.subject.register(observer)
+
     def _initialize_mode(self, mode: str):
         self.style = mode
-        if mode == "normal":
-            self._execute = self.execute_normal
-        elif mode == "minimal":
+        # if mode == "normal":
+        #     self._execute = self.execute_normal
+        if mode == "minimal":
             self._execute = self.execute_minimal
-        elif mode == "chain":
-            self._execute = self.execute_chain
-        elif mode == "linear_chain":
-            self._execute = self.execute_linear_chain
+        # elif mode == "chain":
+        #     self._execute = self.execute_chain
+        # elif mode == "linear_chain":
+        #     self._execute = self.execute_linear_chain
         else:
             raise ValueError(f"Invalid mode: {mode}")
 
@@ -53,92 +52,102 @@ class ToolEngine:
         return self._execute(prompt)
 
     def execute_minimal(self, prompt: str):
-        with self.callback as loading:
-            loading.update_status("Getting LLM Response...")
-            self.store.store_string(prompt, "user")
-            response = self.client.create_tool_completion(
-                self.model_name,
-                self.store.retrieve(),
-                tools=self.tool_manager.tools_schema,
-            )
-            logger.debug(f"Response: {response}")
-            if response.stop_reason == "tool_calls":
-                self.store.store_tool_response(response)
-                self.tool_manager.execute_responses(response.tool_calls)
-            else:
-                self.store.store_response(response, "assistant")
-            return response
+        self.subject.notify({
+            "type": "status_update",
+            "message": "Getting LLM Response..."
+        })
+        self.store.store_string(prompt, "user")
+        response = self.client.create_tool_completion(
+            self.model_name,
+            self.store.retrieve(),
+            tools=self.tool_manager.tools_schema,
+        )
+        self.subject.notify({
+            "type": "response",
+            "content": response.full
+        })
+        logger.debug(f"Response: {response}")
+        if response.stop_reason == "tool_calls":
+            self.store.store_tool_response(response)
+            self.tool_manager.execute_responses(response.tool_calls)
+        else:
+            self.store.store_response(response, "assistant")
+        self.subject.notify({
+            "type": "status_update",
+            "message": "done"
+        })
+        return response
 
-    def execute_normal(self, prompt: str):
-        with self.callback as loading:
-            loading.update_status("Getting LLM Response...")
-            self.store.store_string(prompt, "user")
-            response = self.client.create_tool_completion(
-                self.model_name,
-                self.store.retrieve(),
-                tools=self.tool_manager.tools_schema,
-            )
-            logger.debug(f"Response: {response}")
-            if response.stop_reason == "tool_calls":
-                self.store.store_tool_response(response)
-                self.tool_manager.execute_responses(response.tool_calls)
-                loading.update_status("Getting LLM Response...")
-                response = self.client.create_completion(
-                    self.model_name,
-                    self.store.retrieve(),
-                )
-                self.store.store_response(response, "assistant")
-            else:
-                self.store.store_response(response, "assistant")
-            return response
-
-    def execute_chain(self, prompt: str):
-        with self.callback as loading:
-            loading.update_status("Getting LLM Response...")
-            self.store.store_string(prompt, "user")
-            response = self.client.create_tool_completion(
-                self.model_name,
-                self.store.retrieve(),
-                tools=self.tool_manager.tools_schema,
-            )
-            logger.debug(f"Response: {response}")
-            while response.stop_reason == "tool_calls":
-                self.store.store_tool_response(response)
-                self.tool_manager.execute_responses(response.tool_calls)
-                response = self.client.create_tool_completion(
-                    self.model_name,
-                    self.store.retrieve(),
-                    tools=self.tool_manager.tools_schema,
-                )
-                logger.debug(f"Response: {response}")
-            else:
-                self.store.store_response(response, "assistant")
-            return response
-
-    def execute_linear_chain(self, prompt: str):
-        with self.callback as loading:
-            loading.update_status("Getting LLM Response...")
-            self.store.store_string(prompt, "user")
-            response = self.client.create_tool_completion(
-                self.model_name,
-                self.store.retrieve(),
-                tools=self.tool_manager.tools_schema,
-                parallel_tool_calls=False,
-            )
-            logger.debug(f"Response: {response}")
-            while response.stop_reason == "tool_calls":
-                self.store.store_tool_response(response)
-                self.tool_manager.execute_responses(response.tool_calls)
-                response = self.client.create_tool_completion(
-                    self.model_name,
-                    self.store.retrieve(),
-                    tools=self.tool_manager.tools_schema,
-                    parallel_tool_calls=False,
-                )
-                logger.debug(f"Response: {response}")
-            else:
-                self.store.store_response(response, "assistant")
-            return response
+    # def execute_normal(self, prompt: str):
+    #     with self.callback as loading:
+    #         loading.update_status("Getting LLM Response...")
+    #         self.store.store_string(prompt, "user")
+    #         response = self.client.create_tool_completion(
+    #             self.model_name,
+    #             self.store.retrieve(),
+    #             tools=self.tool_manager.tools_schema,
+    #         )
+    #         logger.debug(f"Response: {response}")
+    #         if response.stop_reason == "tool_calls":
+    #             self.store.store_tool_response(response)
+    #             self.tool_manager.execute_responses(response.tool_calls)
+    #             loading.update_status("Getting LLM Response...")
+    #             response = self.client.create_completion(
+    #                 self.model_name,
+    #                 self.store.retrieve(),
+    #             )
+    #             self.store.store_response(response, "assistant")
+    #         else:
+    #             self.store.store_response(response, "assistant")
+    #         return response
+    #
+    # def execute_chain(self, prompt: str):
+    #     with self.callback as loading:
+    #         loading.update_status("Getting LLM Response...")
+    #         self.store.store_string(prompt, "user")
+    #         response = self.client.create_tool_completion(
+    #             self.model_name,
+    #             self.store.retrieve(),
+    #             tools=self.tool_manager.tools_schema,
+    #         )
+    #         logger.debug(f"Response: {response}")
+    #         while response.stop_reason == "tool_calls":
+    #             self.store.store_tool_response(response)
+    #             self.tool_manager.execute_responses(response.tool_calls)
+    #             response = self.client.create_tool_completion(
+    #                 self.model_name,
+    #                 self.store.retrieve(),
+    #                 tools=self.tool_manager.tools_schema,
+    #             )
+    #             logger.debug(f"Response: {response}")
+    #         else:
+    #             self.store.store_response(response, "assistant")
+    #         return response
+    #
+    # def execute_linear_chain(self, prompt: str):
+    #     with self.callback as loading:
+    #         loading.update_status("Getting LLM Response...")
+    #         self.store.store_string(prompt, "user")
+    #         response = self.client.create_tool_completion(
+    #             self.model_name,
+    #             self.store.retrieve(),
+    #             tools=self.tool_manager.tools_schema,
+    #             parallel_tool_calls=False,
+    #         )
+    #         logger.debug(f"Response: {response}")
+    #         while response.stop_reason == "tool_calls":
+    #             self.store.store_tool_response(response)
+    #             self.tool_manager.execute_responses(response.tool_calls)
+    #             response = self.client.create_tool_completion(
+    #                 self.model_name,
+    #                 self.store.retrieve(),
+    #                 tools=self.tool_manager.tools_schema,
+    #                 parallel_tool_calls=False,
+    #             )
+    #             logger.debug(f"Response: {response}")
+    #         else:
+    #             self.store.store_response(response, "assistant")
+    #         return response
 
 class ToolCallEngine:
     def __init__(self, client: ClientOpenAI,

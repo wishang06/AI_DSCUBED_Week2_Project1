@@ -7,6 +7,7 @@ from rich.markdown import Markdown
 from rich import box
 from rich.live import Live
 from rich.spinner import Spinner
+from rich.pretty import Pretty
 
 class ToolCLI:
     """Simplified CLI interface with menu, messages, and loading states."""
@@ -36,7 +37,7 @@ Type 'exit' to quit
     def redraw(self):
         """Clear screen and redraw all content."""
         self.clear_terminal()
-        
+
         # Print menu once at the top
         self.console.print(Panel(
             Text(self.menu_text, justify="center", style="bold white"),
@@ -45,7 +46,7 @@ Type 'exit' to quit
             border_style="blue",
             box=box.HEAVY
         ))
-        
+
         # Print all stored messages
         for msg in self.messages:
             try:
@@ -69,9 +70,12 @@ Type 'exit' to quit
             # Try to render as markdown first
             content = Markdown(msg["content"])
         except Exception:
+            try:
             # Fall back to plain text if markdown parsing fails
-            content = Text(msg["content"], style=msg["style"])
-        
+                content = Text(msg["content"], style=msg["style"])
+            except Exception:
+                content = Pretty(msg["content"], expand_all=True)
+
         self.console.print(Panel(
             content,
             title=msg["author"],

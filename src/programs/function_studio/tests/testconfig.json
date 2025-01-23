@@ -19,7 +19,10 @@
       },
       "methods": [
         "list_directory",
-        "read_file"
+        "read_file",
+        "write_file",
+        "create_directory",
+        "delete_file"
       ]
     }
   ],
@@ -27,9 +30,9 @@
   "system_prompt": "You are a helpful assistant that uses available tools to help users. Always try to use the most appropriate tool for the task.",
   "test_cases": [
     {
-      "name": "Weather and Files",
-      "description": "Test combining weather forecast with file operations",
-      "prompt": "What files are in the current directory? Also, what's the weather like in Seattle tomorrow?"
+      "name": "Basic Weather and Text Analysis",
+      "description": "Test weather forecast and text analysis functions",
+      "prompt": "What's the weather like in Tokyo tomorrow? Also, analyze this text: 'The quick brown fox jumps over the lazy dog.'"
     }
   ]
 }
