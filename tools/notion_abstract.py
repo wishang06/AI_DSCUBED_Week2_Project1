@@ -25,6 +25,25 @@ def _format_title(text: str) -> List[Dict[str, Any]]:
 # --------------------------------------------------------------------
 
 @openai_function_wrapper(
+    funct_descript="Retrieve the schema (structure and properties) of a Notion database by ID.",
+    param_descript={
+        "database_id": "The ID of the database to retrieve the schema for"
+    }
+)
+def get_database_schema(database_id: str) -> dict:
+    """
+    Retrieve the schema of a Notion database, including its title, description,
+    and property configurations.
+
+    Args:
+        database_id (str): The ID of the database to retrieve
+
+    Returns:
+        dict: The full database object containing its schema and metadata
+    """
+    return notion.databases.retrieve(database_id=database_id)
+
+@openai_function_wrapper(
     funct_descript="Query a Notion database by ID, with optional filter, sorts, start_cursor, and page_size.",
     param_descript={
         "database_id": "The Notion database ID to query",
