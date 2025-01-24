@@ -1,6 +1,7 @@
 import os
 from typing import Dict, List, Optional, Any
 from notion_client import Client
+import json
 
 from src.framework.tool_calling import openai_function_wrapper
 
@@ -55,7 +56,7 @@ def get_database_schema(database_id: str) -> dict:
 )
 def query_database(
         database_id: str,
-        filter: Optional[dict] = None,
+        filter: Optional[str] = None,
         sorts: Optional[list] = None,
         start_cursor: Optional[str] = None,
         page_size: Optional[int] = None
@@ -67,13 +68,13 @@ def query_database(
         "database_id": database_id
     }
     if filter is not None:
-        query_kwargs["filter"] = filter
+        query_kwargs["filter"] = json.loads(filter)
     if sorts is not None:
         query_kwargs["sorts"] = sorts
     if start_cursor is not None:
         query_kwargs["start_cursor"] = start_cursor
     if page_size is not None:
-        query_kwargs["page_size"] = page_size
+        query_kwargs["page_size"] = int(page_size)
 
     return notion.databases.query(**query_kwargs)
 

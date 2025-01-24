@@ -172,5 +172,8 @@ def parse_functions(tool_calls: List[ChatCompletionMessageToolCall]) -> List[cal
 def execute_function(function_object, tools_lookup: Dict[str, callable]):
     function = tools_lookup[function_object.function.name]
     kwargs = json.loads(function_object.function.arguments)
+    for key, value in kwargs.items():
+        if value == "":
+            kwargs[key] = None
     result = function(**kwargs)
     return str(result)

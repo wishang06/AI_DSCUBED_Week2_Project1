@@ -1,0 +1,26 @@
+{
+  "import": [
+    {
+      "from": "tools.notion_abstract",
+      "functions": [
+        "get_database_schema",
+        "query_database"
+      ]
+    }
+  ],
+  "model": "gpt-4o-mini",
+  "system_prompt_path": "prompts/notion/notion_system.md",
+  "context": [
+    {
+      "path": "src/programs/function_studio/results/notion_get_database_schema_20250124_112401.csv",
+      "description": "database schema for the Notion database with ID 918affd4ce0d4b8eb7604d972fd24826"
+    }
+  ],
+  "test_cases": [
+    {
+      "name": "Query Database",
+      "description": "Test retrieving and analyzing database schema with documentation context",
+      "prompt": "Can you query database with ID 918affd4ce0d4b8eb7604d972fd24826 Filter for only events."
+    }
+  ]
+}

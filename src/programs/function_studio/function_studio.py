@@ -2,24 +2,21 @@ import json
 import importlib
 import os
 import sys
-import inspect
 from dataclasses import dataclass
-import dotenv
 from pathlib import Path
 from typing import Any, Optional, List, Dict, Union, Callable
+
+import dotenv
 from rich.console import Console
 from rich.panel import Panel
 from rich.live import Live
 from rich.spinner import Spinner
 from rich.syntax import Syntax
-from rich.prompt import Confirm
-from rich.table import Table
-from rich.syntax import Syntax
 from rich.text import Text
+from rich.table import Table
 from loguru import logger
-
-dotenv.load_dotenv()
-BASE_PATH = Path(__file__).parent
+from rich.pretty import Pretty
+import textwrap
 
 from src.framework.clients import ClientOpenAI
 from src.framework.core.engine import ToolEngine
@@ -27,57 +24,29 @@ from src.framework.utils import CLIStatusCallback
 from src.interfaces.cli import ToolCLI
 from src.framework.core.observer import Observer
 from src.interfaces.cli.observer import CLIObserver
+from tools.core.terminal import TerminalOperations
+
+dotenv.load_dotenv()
 
 console = Console()
 logger.remove()
 
-import json
-import csv
-import os
-from datetime import datetime
-from pathlib import Path
-from typing import Dict, Any, List
-from rich.console import Console
-from rich.table import Table
-from rich.panel import Panel
-from rich.syntax import Syntax
-from rich.text import Text
-from rich.pretty import Pretty
-from rich.live import Live
-from rich.spinner import Spinner
-from src.framework.core.observer import Observer
 
-import json
-import csv
-import os
-from datetime import datetime
-from pathlib import Path
-from typing import Dict, Any, List
-from rich.console import Console
-from rich.table import Table
-from rich.panel import Panel
-from rich.syntax import Syntax
-from rich.text import Text
-from rich.pretty import Pretty
-from rich.live import Live
-from rich.spinner import Spinner
-from src.framework.core.observer import Observer
+@dataclass
+class ToolImport:
+    """Configuration for importing a tool"""
+    module_path: str
+    names: List[str]
+    class_name: Optional[str] = None
+    class_args: Optional[Dict[str, Any]] = None
+    relative_import: bool = True
 
-import json
-import csv
-import os
-from datetime import datetime
-from pathlib import Path
-from typing import Dict, Any, List
-from rich.console import Console
-from rich.table import Table
-from rich.panel import Panel
-from rich.syntax import Syntax
-from rich.text import Text
-from rich.pretty import Pretty
-from rich.live import Live
-from rich.spinner import Spinner
-from src.framework.core.observer import Observer
+
+@dataclass
+class ContextFile:
+    """Configuration for a context file"""
+    path: str
+    description: Optional[str] = None
 
 
 class FunctionStudioObserver(Observer):
@@ -95,6 +64,7 @@ class FunctionStudioObserver(Observer):
 
     def create_csv_filename(self) -> Path:
         """Create a filename for the CSV export based on config name and timestamp"""
+        from datetime import datetime
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         if self.config_path:
             config_name = Path(self.config_path).stem
@@ -109,6 +79,7 @@ class FunctionStudioObserver(Observer):
 
     def export_to_csv(self):
         """Export all results to a CSV file"""
+        import csv
         # Only export if we have results and all tests are complete
         if not self.all_results or not self.all_tests_complete:
             return
@@ -175,11 +146,26 @@ class FunctionStudioObserver(Observer):
         except Exception:
             return str(params)
 
+
     def format_result(self, result: Any) -> str:
-        """Format result for display in table"""
-        if isinstance(result, (dict, list)):
-            return json.dumps(result, indent=2)
-        return str(result)
+        """Format result for display in table with improved pretty printing"""
+        try:
+            from pprint import pformat
+
+            if isinstance(result, (dict, list)):
+                # Use pformat with indent=2 for better table readability
+                return pformat(result, indent=2, width=60)
+            elif isinstance(result, str):
+                try:
+                    # Try to parse string as JSON
+                    parsed = json.loads(result)
+                    return pformat(parsed, indent=2, width=60)
+                except json.JSONDecodeError:
+                    return result
+            else:
+                return pformat(result, indent=2, width=60)
+        except Exception as e:
+            return f"Error formatting result: {str(e)}"
 
     def start_loading(self, message: str):
         """Start loading spinner"""
@@ -209,7 +195,6 @@ class FunctionStudioObserver(Observer):
         table = self.create_cumulative_table()
         self.cli.print(table)
         self.cli.print("\n")  # Add spacing
-        # self.export_to_csv()
 
     def update_loading(self, message: str):
         """Update loading message"""
@@ -249,44 +234,45 @@ class FunctionStudioObserver(Observer):
         return None
 
 
-@dataclass
-class ToolImport:
-    """Configuration for importing a tool"""
-    module_path: str
-    names: List[str]
-    class_name: Optional[str] = None
-    class_args: Optional[Dict[str, Any]] = None
-    relative_import: bool = True
-
-
 class FunctionStudio:
     def __init__(self, config_path: Path):
         self.cli = ToolCLI(menu_text="🔧 Function Studio\n\nTesting function implementations...")
-        # Pass the config filename to the observer
         self.observer = FunctionStudioObserver(str(config_path))
         self.config_path = config_path
         self.config = self._load_config()
         self.tools: List[Callable] = []
-        self.tools: List[Callable] = []
+        self.terminal_ops = TerminalOperations(".")
 
         # Initialize client and engine
         self.client = self._setup_client()
         self.engine = self._setup_engine()
         self.engine.subscribe(self.observer)
+        # self.engine.subscribe(CLIObserver(self.cli))
 
         # Load the tools
         self._load_tools()
+
+        # Load context files if specified
+        if "context" in self.config:
+            self._load_context_files()
 
     def _load_config(self) -> Dict[str, Any]:
         """Load test configuration from JSON file"""
         try:
             # Resolve path relative to tests directory
-            full_path = BASE_PATH / 'tests' / self.config_path
+            base_path = Path(__file__).parent
+            full_path = base_path / 'tests' / self.config_path
             if not full_path.exists():
                 full_path = Path(self.config_path)  # Try absolute path as fallback
 
             with open(full_path, 'r') as f:
-                return json.load(f)
+                config = json.load(f)
+
+            # Validate required fields
+            if 'import' not in config:
+                raise ValueError("Config must contain 'import' field")
+
+            return config
         except Exception as e:
             raise ValueError(f"Error loading config file: {e}")
 
@@ -297,28 +283,79 @@ class FunctionStudio:
             raise ValueError("OPENAI_API_KEY environment variable not set")
         return ClientOpenAI.create_openai(api_key)
 
+
     def _setup_engine(self) -> ToolEngine:
         """Set up the tool engine"""
+        # Load system prompt from file if specified
+        system_prompt = None
+        if 'system_prompt_path' in self.config:
+            try:
+                with open(self.config['system_prompt_path'], 'r', encoding='utf-8') as f:
+                    system_prompt = f.read()
+            except Exception as e:
+                console.print(f"[yellow]Warning: Could not load system prompt file: {e}[/yellow]")
+        # Fall back to direct system_prompt if specified
+        elif 'system_prompt' in self.config:
+            system_prompt = self.config.get('system_prompt')
+
         return ToolEngine(
             self.client,
             model_name=self.config.get('model', 'gpt-4o-mini'),
-            system_prompt=self.config.get('system_prompt'),
+            system_prompt=system_prompt,
             mode="minimal",
             tools=[]
         )
 
+    def _load_context_files(self):
+        """Load context files specified in the config"""
+        if not isinstance(self.config["context"], list):
+            raise ValueError("Context must be a list of file configurations")
+
+        context_files = []
+        for file_config in self.config["context"]:
+            if isinstance(file_config, str):
+                # Simple string path
+                context_files.append(ContextFile(path=file_config))
+            elif isinstance(file_config, dict):
+                # Dict with path and optional description
+                context_files.append(ContextFile(
+                    path=file_config["path"],
+                    description=file_config.get("description")
+                ))
+            else:
+                raise ValueError(f"Invalid context file configuration: {file_config}")
+
+        # Load each context file
+        context_content = []
+        for ctx_file in context_files:
+            try:
+                content = self.terminal_ops.read_file(ctx_file.path)
+                context_intro = f"\nContents of {ctx_file.path}"
+                if ctx_file.description:
+                    context_intro += f" ({ctx_file.description})"
+                context_intro += ":\n"
+                context_content.append(context_intro)
+                context_content.append(content)
+            except Exception as e:
+                console.print(f"[red]Error loading context file {ctx_file.path}: {str(e)}[/red]")
+
+        # Add context to engine if any files were loaded successfully
+        if context_content:
+            context_message = "\n".join(context_content)
+            self.engine.store.store_string(context_message, "assistant")
+            console.print(f"[green]Successfully loaded {len(context_files)} context file(s)[/green]")
+
     def _parse_import_config(self) -> List[ToolImport]:
         """Parse the import configuration from the config file"""
+        # ... (rest of the import parsing code remains the same)
         import_config = self.config['import']
         tools_to_import = []
 
-        # Handle different import configurations
         if isinstance(import_config, dict):
             # Single import configuration
             module_path = import_config['from']
             relative_import = import_config.get('relative_import', True)
 
-            # Handle class imports
             if 'class' in import_config:
                 class_config = import_config['class']
                 tools_to_import.append(ToolImport(
@@ -329,7 +366,6 @@ class FunctionStudio:
                     relative_import=relative_import
                 ))
             else:
-                # Handle function imports
                 functions = import_config.get('functions', [import_config.get('function')])
                 if isinstance(functions, str):
                     functions = [functions]
@@ -340,7 +376,6 @@ class FunctionStudio:
                 ))
 
         elif isinstance(import_config, list):
-            # Multiple import configurations
             for config in import_config:
                 module_path = config['from']
                 relative_import = config.get('relative_import', True)
@@ -381,7 +416,7 @@ class FunctionStudio:
         methods = []
         for name in dir(instance):
             attr = getattr(instance, name)
-            if hasattr(attr, 'output') and callable(attr):  # Check for wrapped methods
+            if hasattr(attr, 'output') and callable(attr):
                 methods.append(attr)
         return methods
 
@@ -414,9 +449,9 @@ class FunctionStudio:
                 self.tools.extend(imported_tools)
 
             # Update engine with imported tools
-            self.engine.tool_manager.tools.extend(self.tools)
-            self.engine.tool_manager.tools_schema = [t.output for t in self.engine.tool_manager.tools]
-            self.engine.tool_manager.tools_lookup = {t.funct.__name__: t for t in self.engine.tool_manager.tools}
+            self.engine.tool_manager.tools = self.tools
+            self.engine.tool_manager.tools_schema = [t.output for t in self.tools]
+            self.engine.tool_manager.tools_lookup = {t.funct.__name__: t for t in self.tools}
 
             # Log success
             tool_names = [t.funct.__name__ for t in self.tools]
@@ -426,23 +461,16 @@ class FunctionStudio:
             console.print(f"[red]Error loading tools: {e}[/red]")
             raise
 
-    def display_test_info(self, test_case: Dict[str, Any]):
-        """Display information about the current test case"""
-        console.print("\n[bold blue]Test Case Information:[/bold blue]")
-        console.print(Panel(
-            Syntax(json.dumps(test_case, indent=2), "json", theme="monokai"),
-            title="Test Case"
-        ))
-
     def run_tests(self):
         """Run all test cases from the config"""
         console.print(f"[bold blue]Running Function Studio Tests[/bold blue]")
-        tool_names = [t.funct.__name__ for t in self.tools]
-        console.print(f"Available tools: {', '.join(tool_names)}")
 
         for i, test_case in enumerate(self.config['test_cases'], 1):
             console.print(f"\n[bold cyan]Test Case {i}/{len(self.config['test_cases'])}[/bold cyan]")
-            self.display_test_info(test_case)
+            console.print(Panel(
+                Syntax(json.dumps(test_case, indent=2), "json", theme="monokai"),
+                title="Test Case"
+            ))
 
             try:
                 response = self.engine.execute(test_case['prompt'])
@@ -461,11 +489,18 @@ def main(config_path: Optional[str] = None):
 
         studio = FunctionStudio(Path(config_path))
         studio.run_tests()
+        return 0
 
-    except Exception as e:
-        console.print(f"[red]Fatal Error: {e}[/red]")
+    except ValueError as e:
+        console.print(f"[red]Configuration Error: {str(e)}[/red]")
         return 1
-    return 0
+    except ImportError as e:
+        console.print(f"[red]Import Error: {str(e)}[/red]")
+        return 1
+    except Exception as e:
+        console.print(f"[red]Fatal Error: {str(e)}[/red]")
+        console.print_exception()
+        return 1
 
 
 if __name__ == "__main__":
@@ -473,4 +508,13 @@ if __name__ == "__main__":
         console.print("[red]Error: Please provide a test configuration file path[/red]")
         sys.exit(1)
 
-    sys.exit(main(sys.argv[1]))
+    try:
+        result = main(sys.argv[1])
+        sys.exit(result)
+    except KeyboardInterrupt:
+        console.print("\n[yellow]Test execution interrupted by user[/yellow]")
+        sys.exit(130)
+    except Exception as e:
+        console.print(f"[red]Unexpected error: {str(e)}[/red]")
+        console.print_exception()
+        sys.exit(1)
