@@ -154,6 +154,12 @@ Type 'exit' to quit
         self.redraw()
         return user_input
 
+    def get_confirmation(self, prompt: str = "You") -> str:
+        """Get input from user and store command."""
+        self.console.rule(f"[bold yellow]{prompt} (y/n)[/bold yellow]")
+        user_input = self.console.input("  ❯ ")
+        return user_input
+
     def load_command(self, func) -> None:
         """
         Register a function to be executed when its name is typed as a command.

@@ -98,7 +98,7 @@ class ToolManager:
                  tools: List[Callable],
                  store_result: Callable,
                  subject: EngineSubject,
-                 debug: bool = False):
+                 confirm: bool = False):
         """
         Args:
             tools: List of functions to be used as tools
@@ -109,7 +109,8 @@ class ToolManager:
         self.tools_lookup = create_tools_lookup(tools)
         self.store_result = store_result
         self.subject = subject
-        self.debug = debug
+        self.confirm = confirm
+        self.confirm_status = True
         logger.debug(f"Tool Manager initialized with {len(tools)} tools")
         logger.debug(f"Tools schema: {pformat(self.tools_schema)}")
 
@@ -125,12 +126,21 @@ class ToolManager:
                 "type": "status_update",
                 "message": f"Executing function {call.function.name}..."
             })
-            try:
-                result = execute_function(call, tools_lookup=self.tools_lookup)
-                logger.info(f"Successfully executed function {call.function.name}")
-            except Exception as e:
-                logger.info(f"Error executing function {call.function.name}: {e}")
-                result = f"Error executing function {call.function.name}: {e}"
+            if self.confirm:
+                self.confirm_status = self.subject.get_input({
+                    "type": "confirm",
+                    "message": f"Execute function {call.function.name} with parameters {json.loads(call.function.arguments)}?"
+                })
+            if self.confirm_status:
+                try:
+                    result = execute_function(call, tools_lookup=self.tools_lookup)
+                    logger.info(f"Successfully executed function {call.function.name}")
+                except Exception as e:
+                    result = f"Error executing function {call.function.name}: {e}"
+                    logger.info(f"Error executing function {call.function.name}: {e}")
+            else:
+                logger.info(f"Function {call.function.name} execution cancelled")
+                result = "Function execution cancelled by user"
             result = {
                 "role": "tool",
                 "tool_call_id": call.id,

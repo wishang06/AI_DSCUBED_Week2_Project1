@@ -7,7 +7,7 @@ class Observer(ABC):
         pass
 
     @abstractmethod
-    def get_input(self, message: str) -> str:
+    def get_input(self, message: Any) -> str:
         pass
 
 class EngineSubject:
@@ -21,8 +21,8 @@ class EngineSubject:
         for observer in self._observers:
             observer.update(event)
 
-    def get_input(self, message: str) -> str:
+    def get_input(self, event: Any) -> str:
         for observer in self._observers:
             if observer.get_input:
-                return observer.get_input(message)
+                return observer.get_input(event)
         raise ValueError("No observer can handle input.")

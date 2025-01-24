@@ -1,6 +1,7 @@
 from src.framework.core.observer import Observer
 from typing import Any
 from src.interfaces.cli import ToolCLI
+from rich.prompt import Confirm
 
 class CLIObserver(Observer):
     def __init__(self, cli_interface: ToolCLI):
@@ -27,5 +28,15 @@ class CLIObserver(Observer):
             else:
                 self.loading.update_status(event["message"])
 
-    def get_input(self, message: str):
-        return self.cli_interface.get_input(message)
+    def get_input(self, event: Any):
+        if event["type"] == "confirm":
+            while True:
+                self.loading.live_context.stop()
+                response = self.cli_interface.get_confirmation(event["message"]).lower().strip()
+                self.loading.live_context.start()
+                if response in ['yes', 'y']:
+                    return True
+                elif response in ['no', 'n']:
+                    return False
+                print("Please enter 'yes' or 'no'")
+        return self.cli_interface.get_input(event["message"])

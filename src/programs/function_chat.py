@@ -11,6 +11,7 @@ from src.framework.clients import ClientOpenAI
 from tools.core.terminal import TerminalOperations
 from src.framework.utils import CLIStatusCallback
 from tools.pwsh import execute_command
+from src.interfaces.cli.observer import CLIObserver
 
 # Configure logging
 logger.remove()
@@ -44,10 +45,11 @@ class FunctionChat:
 
         # Initialize CLI interface
         self.cli = self._setup_cli()
-        self.callback = CLIStatusCallback(self.cli)
-
         # Initialize engine
         self.engine = self._setup_engine()
+        self.engine.subscribe(CLIObserver(self.cli))
+
+
 
     def _setup_cli(self) -> ToolCLI:
         """Set up the CLI interface"""
@@ -84,9 +86,9 @@ Type your message to begin...
                 self.terminal.create_directory,
                 execute_command,
             ],
-            callback=self.callback,
             mode=self.config.mode,
-            system_prompt=system_prompt
+            system_prompt=system_prompt,
+            confirm = True
         )
 
     def _handle_special_commands(self, user_input: str) -> bool:
@@ -142,7 +144,10 @@ Type your message to begin...
 
                     # Execute the request
                     self.engine.execute(user_input)
-
+                    self.engine.subject.notify({
+                        "type": "status_update",
+                        "message": "done"
+                    })
                     # Process new messages
                     messages = self.engine.store.retrieve()
                     self._process_messages(count, messages)

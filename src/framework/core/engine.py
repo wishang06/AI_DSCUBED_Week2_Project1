@@ -18,6 +18,7 @@ class ToolEngine:
             tools: List[callable],
             mode: str = "normal",
             system_prompt: Optional[str] = None,
+            confirm: bool = False,
     ):
         self.model_name = model_name
         self.client = client
@@ -28,6 +29,7 @@ class ToolEngine:
             tools,
             self.store.store_function_call_result,
             self.subject,
+            confirm = confirm
         )
         if system_prompt:
             self.store.set_system_prompt(system_prompt)
@@ -93,7 +95,10 @@ class ToolEngine:
         if response.stop_reason == "tool_calls":
             self.store.store_tool_response(response)
             self.tool_manager.execute_responses(response.tool_calls)
-            self.subject.notify("Getting Closing LLM Response...")
+            self.subject.notify({
+                "type": "status_update",
+                "message": "Getting Closing LLM Response..."
+            })
             response = self.client.create_completion(
                 self.model_name,
                 self.store.retrieve(),
