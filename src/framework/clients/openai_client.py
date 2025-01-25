@@ -63,3 +63,5 @@ class ClientOpenAI:
                                                    parallel_tool_calls=parallel_tool_calls
                                                    )
         return ResponseWrapperOpenAI(response)
+
+    def

@@ -9,8 +9,30 @@ from src.framework.core.store import BasicChatContextStore, ContextStore
 from src.framework.tool_calling import *
 from src.framework.types.model_config import LLMInit
 from src.framework.core.observer import EngineSubject, Observer
+from src.framework.types.engine import Engine
 
-class ToolEngine:
+class ChatRoomEngine:
+    def __init__(self, client: ClientOpenAI, model_name: str, system_prompt: Optional[str] = None):
+        self.client = client
+        self.model_name = model_name
+        self.store = ContextStore()
+        if system_prompt:
+            self.store.set_system_prompt(system_prompt)
+        else:
+            self.store.set_system_prompt("You are a helpful assistant.")
+
+    def execute(self, message: str):
+        self.store.store_string(message, "user")
+        response = self.client.create_completion(
+            self.model_name,
+            self.store.retrieve()
+        )
+        self.store.store_response(response, "assistant")
+        return response
+
+
+
+class ToolEngine(Engine):
     def __init__(
             self,
             client: ClientOpenAI,

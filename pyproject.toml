@@ -16,11 +16,16 @@ dependencies = [
     "pyperclip>=1.9.0",
     "pytest>=8.3.4",
     "python-dotenv>=1.0.1",
-    "rich>=13.9.4",
     "ruff>=0.8.6",
     "streamlit>=1.41.1",
+    "textual>=1.0.0",
+    "textual-dev>=1.7.0",
     "typer>=0.15.1",
+    "setuptools>=75.6.0",
 ]
+
+[project.scripts]
+llmgine = "src.programs.router:main"
 
 [dependency-groups]
 dev = [

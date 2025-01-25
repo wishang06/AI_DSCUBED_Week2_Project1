@@ -17,6 +17,7 @@ console = Console()
 class Program(str, Enum):
     FUNCTION_STUDIO = "function-studio"
     FUNCTION_CHAT = "function-chat"
+    LLMGEN = "llmgen"
 
 
 def import_module_from_path(path: Path):
@@ -102,6 +103,47 @@ def function_chat(
 
     except Exception as e:
         console.print(f"[red]Error running Function Chat: {str(e)}[/red]")
+        raise typer.Exit(1)
+
+
+@app.command()
+def chat(
+        mode: str = typer.Option(
+            "normal",
+            "--mode", "-m",
+            help="Engine mode (normal, minimal, chain, linear_chain)"
+        ),
+        model: str = typer.Option(
+            "gpt-4o-mini",
+            "--model",
+            help="Model to use for chat"
+        ),
+        system_prompt: Optional[Path] = typer.Option(
+            None,
+            "--system-prompt", "-s",
+            help="Path to system prompt file",
+            exists=False,  # Changed to False to avoid validation error when not provided
+            file_okay=True,
+            dir_okay=False,
+        ),
+        history_file: Optional[Path] = typer.Option(
+            None,
+            "--history", "-h",
+            help="Path to load chat history from"
+        )
+):
+    """Run LLMGen rich implementation"""
+    try:
+        # Import the LLMGen rich implementation module
+        program_path = Path(__file__).parent / "llmgen" / "rich_version" / "main.py"
+        program_module = import_module_from_path(program_path)
+
+        # Run the chat program with provided arguments
+        sys.argv = [sys.argv[0]]  # Reset sys.argv to avoid typer argument conflicts
+        return program_module.main()
+
+    except Exception as e:
+        console.print(f"[red]Error running LLMGen: {str(e)}[/red]")
         raise typer.Exit(1)
 
 
