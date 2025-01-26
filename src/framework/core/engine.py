@@ -30,7 +30,22 @@ class ChatRoomEngine:
         self.store.store_response(response, "assistant")
         return response
 
+class SimpleEngine(Engine):
+    def __init__(self, client: ClientOpenAI, model: str):
+        self.model = model
+        self.subject = EngineSubject()
+        self.client = client
 
+    def execute(self, prompt: str):
+        response = self.client.create_completion(self.model, context=[{
+            "role": "user",
+            "content": prompt
+        }])
+        self.subject.notify({
+            "type": "response",
+            "content": response.full
+        })
+        return response.content
 
 class ToolEngine(Engine):
     def __init__(
