@@ -1,6 +1,9 @@
-from src.framework.clients.response import ResponseWrapper
-from typing import Dict, Any, List, Optional
+from src.framework.clients.response import ResponseWrapper, ResponseWrapperOpenAI, StreamedResponseWrapperOpenAI
+from typing import Dict, Any, List, Optional, Union
 from loguru import logger
+
+def surround_with_thinking(text):
+    return f"<thinking>{text}</thinking>"
 
 class ContextStore:
     def __init__(self, system_prompt: Optional[str] = None):
@@ -15,9 +18,13 @@ class ContextStore:
     def set_system_prompt(self, prompt: str):
         self.system_prompt = prompt
 
-    def store_response(self, response: ResponseWrapper, role: str):
+    def store_response(self, response: Union[ResponseWrapperOpenAI, StreamedResponseWrapperOpenAI], role: str):
         self.response_log.append(response)
-        self.chat_history.append({"role": role, "content": response.content})
+        if isinstance(response, StreamedResponseWrapperOpenAI):
+            self.chat_history.append({"role": role, "content": surround_with_thinking(response.response_reasoning)
+                                     + "\n" + response.response_content})
+        else:
+            self.chat_history.append({"role": role, "content": response.content})
 
     def store_string(self, string: str, role: str):
         self.response_log.append([role, string])

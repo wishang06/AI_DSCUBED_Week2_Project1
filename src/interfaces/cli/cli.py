@@ -1,6 +1,6 @@
 import os
 from typing import List, Dict, Optional, Any
-from rich.console import Console
+from rich.console import Console, Group
 from rich.panel import Panel
 from rich.text import Text
 from rich.markdown import Markdown
@@ -9,6 +9,11 @@ from rich.live import Live
 from rich.spinner import Spinner
 from rich.pretty import Pretty
 from rich.rule import Rule
+
+def wrap_with_thinking(text: str) -> str:
+    """Wrap text in thinking emoji."""
+    return f"<thinking>\n{text}\n</thinking>\n"
+
 
 class ToolCLI:
     """Simplified CLI interface with menu, messages, and loading states."""
@@ -84,37 +89,17 @@ Type 'exit' to quit
             box=box.ROUNDED
         ))
 
-    def print_streamed_message(self, response: Any, author: str, style: str):
-        #todo find proper type for response
+    def print_streamed_message(self, response: Any):
+        # todo find proper type for response
         """Print a message that updates live within a panel."""
-        with Live(
-                Panel(
-                    "",
-                    title=author,
-                    border_style=style,
-                    box=box.ROUNDED
-                ),
-                console=self.console,
-                refresh_per_second=10,
-                transient=False
-        ) as live:
-            # Simulate streaming by characters
-            current_text = ""
+        with Live(Panel(""), vertical_overflow='visible', auto_refresh=True) as live:
             for chunk in response:
-                current_text += chunk.choices[0].delta.content
-                try:
-                    # Try markdown first
-                    content = Markdown(current_text)
-                except Exception:
-                    # Fallback to plain text
-                    content = Text(current_text, style=style)
-
-                live.update(Panel(
-                    content,
-                    title=author,
-                    border_style=style,
-                    box=box.ROUNDED
-                ))
+                if response.reasoning:
+                    live.update(
+                        Panel(Markdown(wrap_with_thinking(response.reasoning)+response.content), style="green",
+                              title="Assistant"))
+                if response.content:
+                    live.update(Panel(response.content, border_style="green", title="Assistant"))
 
     def add_and_redraw(self, content: str, author: str, style: str = "blue"):
         """Print a boxed message with an author."""
@@ -167,7 +152,7 @@ Type 'exit' to quit
             title=f"[bold blue]{prompt}[/bold blue]",
             style="blue",
         ))
-        user_input = self.console.input("  ❯ ")
+        user_input = self.console.input("❯ ")
         
         if user_input.lower() not in ['exit', 'quit']:
             self.commands.append(user_input)
@@ -185,8 +170,8 @@ Type 'exit' to quit
 
     def get_confirmation(self, prompt: str = "You") -> str:
         """Get input from user and store command."""
-        self.console.print(f"[bold yellow]{prompt} (y/n)[/bold yellow]")
-        user_input = self.console.input("  ❯ ")
+        self.console.print(Panel(Pretty(prompt, expand_all=True), title="[bold]Confirmation function call? (y/n)[/bold]", border_style="yellow"))
+        user_input = self.console.input("❯ ")
         return user_input
 
     def load_command(self, func) -> None:

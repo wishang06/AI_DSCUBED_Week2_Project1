@@ -88,7 +88,7 @@ Type your message to begin...
             ],
             mode=self.config.mode,
             system_prompt=system_prompt,
-            confirm = True
+            confirm_function_call= True
         )
 
     def _handle_special_commands(self, user_input: str) -> bool:

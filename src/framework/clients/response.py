@@ -186,11 +186,11 @@ class StreamedResponseWrapperOpenAI:
 
             return chunk
 
-        except StopIteration:
+        except (StopIteration, IndexError) as e:
             # Update usage statistics if available
             if self.chunks and hasattr(self.chunks[-1], 'usage'):
                 self.usage = self.chunks[-1].usage
-            raise
+            raise StopIteration
 
         except openai.APIError as e:
             self.status = StreamedResponseStatus.FAILED

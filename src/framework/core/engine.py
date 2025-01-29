@@ -10,6 +10,7 @@ from src.framework.tool_calling import *
 from src.framework.types.model_config import LLMInit
 from src.framework.core.observer import EngineSubject, Observer
 from src.framework.types.engine import Engine
+from src.framework.types.events import EngineObserverEventType
 
 class ChatRoomEngine:
     def __init__(self, client: ClientOpenAI, model_name: str, system_prompt: Optional[str] = None):
@@ -55,7 +56,8 @@ class ToolEngine(Engine):
             tools: List[callable],
             mode: str = "normal",
             system_prompt: Optional[str] = None,
-            confirm: bool = False,
+            confirm_function_call: bool = False,
+            stream_output: bool = False
     ):
         self.model_name = model_name
         self.client = client
@@ -66,10 +68,22 @@ class ToolEngine(Engine):
             tools,
             self.store.store_function_call_result,
             self.subject,
-            confirm = confirm
+            confirm = confirm_function_call
         )
         if system_prompt:
             self.store.set_system_prompt(system_prompt)
+        if stream_output:
+            self.streaming = True
+            self.create_completion = self.client.create_streaming_completion
+        else:
+            self.streaming = False
+            self.create_completion = self.client.create_completion
+
+    def toggle_streaming(self):
+        if self.streaming:
+            self.create_completion = self.client.create_completion
+        else:
+            self.create_completion = self.client.create_streaming_completion
 
     def subscribe(self, observer: Observer):
         self.subject.register(observer)
@@ -92,7 +106,7 @@ class ToolEngine(Engine):
 
     def execute_minimal(self, prompt: str):
         self.subject.notify({
-            "type": "status_update",
+            "type": EngineObserverEventType.STATUS_UPDATE,
             "message": "Getting LLM Response..."
         })
         self.store.store_string(prompt, "user")
@@ -119,11 +133,11 @@ class ToolEngine(Engine):
 
     def execute_normal(self, prompt: str):
         self.subject.notify({
-            "type": "status_update",
+            "type": EngineObserverEventType.STATUS_UPDATE,
             "message": "Getting Opening LLM Response..."
         })
         self.store.store_string(prompt, "user")
-        response = self.client.create_completion(
+        response = self.create_completion(
             self.model_name,
             self.store.retrieve(),
             tools=self.tool_manager.tools_schema,
@@ -133,10 +147,10 @@ class ToolEngine(Engine):
             self.store.store_tool_response(response)
             self.tool_manager.execute_responses(response.tool_calls)
             self.subject.notify({
-                "type": "status_update",
+                "type": EngineObserverEventType.STATUS_UPDATE,
                 "message": "Getting Closing LLM Response..."
             })
-            response = self.client.create_completion(
+            response = self.create_completion(
                 self.model_name,
                 self.store.retrieve(),
             )

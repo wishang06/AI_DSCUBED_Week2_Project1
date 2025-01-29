@@ -11,6 +11,7 @@ from tools.core.terminal import TerminalOperations
 from tools.pwsh import execute_command
 from src.programs.llmgen.rich_version.observer import LLMGenObserver
 from src.programs.llmgen.rich_version.commands import CommandRegistry
+from src.framework.types.events import EngineObserverEventType
 
 # Configure logging
 logger.remove()
@@ -28,6 +29,7 @@ class LLMGenConfig(BaseModel):
     model_name: str = DEFAULT_MODEL
     system_prompt_path: Optional[str] = DEFAULT_SYSTEM_PROMPT_PATH
     api_key: Optional[str] = None
+    streaming: bool = False
 
 
 class LLMGenChat:
@@ -39,6 +41,7 @@ class LLMGenChat:
         if not self.api_key:
             raise ValueError("No API key provided and OPENAI_API_KEY not found in environment")
 
+        self.streaming = config.streaming
         self.client = ClientOpenAI.create_openai(self.api_key)
         self.terminal = TerminalOperations(".")
 
@@ -50,7 +53,8 @@ class LLMGenChat:
 
         # Initialize engine with observer
         self.engine = self._setup_engine()
-        self.engine.subscribe(LLMGenObserver(self.cli))
+        self.observer = LLMGenObserver(self.cli)
+        self.engine.subscribe(self.observer)
 
     def _setup_cli(self) -> ToolCLI:
         """Set up the CLI interface"""
@@ -101,7 +105,9 @@ Type your message to begin...
                 execute_command,
             ],
             mode=self.config.mode,
-            system_prompt=system_prompt
+            system_prompt=system_prompt,
+            confirm_function_call=True,
+            stream_output=self.streaming
         )
 
     def run(self):
@@ -125,11 +131,13 @@ Type your message to begin...
                     self.cli.redraw()
 
                     # Execute the request
-                    self.engine.execute(user_input)
+                    response = self.engine.execute(user_input)
                     self.engine.subject.notify({
-                        "type": "status_update",
+                        "type": EngineObserverEventType.STATUS_UPDATE,
                         "message": "done"
                     })
+                    if self.engine.streaming:
+                        self.cli.print_streamed_message(response)
 
                     # Process new messages
                     messages = self.engine.store.retrieve()

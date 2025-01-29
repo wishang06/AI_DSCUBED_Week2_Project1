@@ -4,8 +4,12 @@ import inspect
 import json
 from loguru import logger
 from pprint import pformat
+
+from rich.pretty import Pretty
+
 from src.framework.core.observer import EngineSubject
 from src.interfaces.abstract import Interface
+from src.framework.types.events import EngineObserverEventType
 
 from src.framework.types.callbacks import StatusCallback
 
@@ -116,20 +120,25 @@ class ToolManager:
 
     def execute_responses(self, calls: List[ChatCompletionMessageToolCall]):
         for call in calls:
+            # self.subject.notify({
+            #     "type": EngineObserverEventType.FUNCTION_CALL,
+            #     "tool_call_id": call.id,
+            #     "name": call.function.name,
+            #     "parameters": json.loads(call.function.arguments)
+            # })
             self.subject.notify({
-                "type": "function_call",
-                "tool_call_id": call.id,
-                "name": call.function.name,
-                "parameters": json.loads(call.function.arguments)
-            })
-            self.subject.notify({
-                "type": "status_update",
+                "type": EngineObserverEventType.STATUS_UPDATE,
                 "message": f"Executing function {call.function.name}..."
             })
             if self.confirm:
                 self.confirm_status = self.subject.get_input({
-                    "type": "confirm",
-                    "message": f"Execute function {call.function.name} with parameters {json.loads(call.function.arguments)}?"
+                    "type": EngineObserverEventType.GET_CONFIRMATION,
+                    # "message": f"[bold]Function:[/bold] '{call.function.name}'\n"
+                    #            f"[bold]Parameters:[/bold] {(json.loads(call.function.arguments))}"
+                    "message": {
+                        "function": call.function.name,
+                        "parameters": json.loads(call.function.arguments)
+                    }
                 })
             if self.confirm_status:
                 try:
@@ -148,7 +157,7 @@ class ToolManager:
                 "content": str(result)}
             self.store_result(result)
             self.subject.notify({
-                "type": "function_result",
+                "type": EngineObserverEventType.FUNCTION_RESULT,
                 "tool_call_id": call.id,
                 "name": call.function.name,
                 "content": result

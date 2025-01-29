@@ -41,6 +41,10 @@ def chat(
             None,
             "--history", "-h",
             help="Path to load chat history from"
+        ),
+        streaming: Optional[bool] = typer.Option(
+            False,
+            help="Enable streaming mode"
         )
 ):
     """Start the LLMGen chat interface"""
@@ -52,7 +56,8 @@ def chat(
         config = LLMGenConfig(
             mode=mode,
             model_name=model,
-            system_prompt_path=str(system_prompt) if system_prompt else None
+            system_prompt_path=str(system_prompt) if system_prompt else None,
+            streaming=streaming
         )
 
         # Initialize and run chat
