@@ -1,5 +1,5 @@
 import os
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
@@ -8,6 +8,7 @@ from rich import box
 from rich.live import Live
 from rich.spinner import Spinner
 from rich.pretty import Pretty
+from rich.rule import Rule
 
 class ToolCLI:
     """Simplified CLI interface with menu, messages, and loading states."""
@@ -83,6 +84,38 @@ Type 'exit' to quit
             box=box.ROUNDED
         ))
 
+    def print_streamed_message(self, response: Any, author: str, style: str):
+        #todo find proper type for response
+        """Print a message that updates live within a panel."""
+        with Live(
+                Panel(
+                    "",
+                    title=author,
+                    border_style=style,
+                    box=box.ROUNDED
+                ),
+                console=self.console,
+                refresh_per_second=10,
+                transient=False
+        ) as live:
+            # Simulate streaming by characters
+            current_text = ""
+            for chunk in response:
+                current_text += chunk.choices[0].delta.content
+                try:
+                    # Try markdown first
+                    content = Markdown(current_text)
+                except Exception:
+                    # Fallback to plain text
+                    content = Text(current_text, style=style)
+
+                live.update(Panel(
+                    content,
+                    title=author,
+                    border_style=style,
+                    box=box.ROUNDED
+                ))
+
     def add_and_redraw(self, content: str, author: str, style: str = "blue"):
         """Print a boxed message with an author."""
         message = {"content": content, "author": author, "style": style}
@@ -130,13 +163,9 @@ Type 'exit' to quit
     def get_input(self, prompt: str = "You") -> str:
         """Get input from user and store command."""
         # Create a gradient prompt
-        self.console.print(Panel(
-            "",
+        self.console.print(Rule(
             title=f"[bold blue]{prompt}[/bold blue]",
-            subtitle="Type your message...",
-            border_style="blue",
-            box=box.ROUNDED,
-            padding=(0, 2)
+            style="blue",
         ))
         user_input = self.console.input("  ❯ ")
         
@@ -156,7 +185,7 @@ Type 'exit' to quit
 
     def get_confirmation(self, prompt: str = "You") -> str:
         """Get input from user and store command."""
-        self.console.rule(f"[bold yellow]{prompt} (y/n)[/bold yellow]")
+        self.console.print(f"[bold yellow]{prompt} (y/n)[/bold yellow]")
         user_input = self.console.input("  ❯ ")
         return user_input
 

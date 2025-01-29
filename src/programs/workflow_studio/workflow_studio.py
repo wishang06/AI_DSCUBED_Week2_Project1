@@ -1,10 +1,7 @@
 from pathlib import Path
 import importlib.util
-import sys
 from typing import Optional, Dict, Any
 from rich.console import Console
-from rich.panel import Panel
-from rich.syntax import Syntax
 from rich.table import Table
 from rich.live import Live
 from rich.spinner import Spinner
@@ -12,7 +9,7 @@ from rich.text import Text
 from loguru import logger
 from datetime import datetime
 
-from src.framework.core.workflow import Workflow, Block, BinaryDecision, SimpleEngine
+from src.framework.workflow.workflow import Workflow, BinaryDecision
 from src.framework.core.observer import Observer
 from src.interfaces.cli import ToolCLI
 

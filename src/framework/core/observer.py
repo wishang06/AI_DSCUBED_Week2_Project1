@@ -26,3 +26,16 @@ class EngineSubject:
             if observer.get_input:
                 return observer.get_input(event)
         raise ValueError("No observer can handle input.")
+
+class DummieEngineSubject:
+    def __init__(self):
+        pass
+
+    def register(self):
+        pass
+
+    def notify(self, event: Any):
+        pass
+
+    def get_input(self, event: Any):
+        return "Dummie Engine Response"

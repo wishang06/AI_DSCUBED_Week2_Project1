@@ -23,7 +23,7 @@ class ChatRoomEngine:
 
     def execute(self, message: str):
         self.store.store_string(message, "user")
-        response = self.client.create_completion(
+        response = self.client.create_completion_legacy(
             self.model_name,
             self.store.retrieve()
         )
@@ -37,7 +37,7 @@ class SimpleEngine(Engine):
         self.client = client
 
     def execute(self, prompt: str):
-        response = self.client.create_completion(self.model, context=[{
+        response = self.client.create_completion_legacy(self.model, context=[{
             "role": "user",
             "content": prompt
         }])
@@ -123,7 +123,7 @@ class ToolEngine(Engine):
             "message": "Getting Opening LLM Response..."
         })
         self.store.store_string(prompt, "user")
-        response = self.client.create_tool_completion(
+        response = self.client.create_completion(
             self.model_name,
             self.store.retrieve(),
             tools=self.tool_manager.tools_schema,
@@ -287,7 +287,7 @@ class AgentEngine:
             the finish_planning function to proceed to the execution phase. Please
             proceed with the planning.
             """, "assistant")
-            response = self.client.create_completion(
+            response = self.client.create_completion_legacy(
                 self.model_name,
                 self.store.retrieve()
             )
@@ -325,7 +325,7 @@ class AgentEngine:
                             explain what you're going to do next. If you need user input\
                             also write the question here."
                 })
-                response = self.client.create_completion(
+                response = self.client.create_completion_legacy(
                     self.model_name,
                     temp_contex)
                 self.store.store_response(response, "assistant")
@@ -430,7 +430,7 @@ class LinearAgentEngine:
                             "role": "assistant",
                             "content": f"Explain why I have called {response.tool_calls[0]} (and only called) in future tense..."
                         })
-                        plan_response = self.client.create_completion(
+                        plan_response = self.client.create_completion_legacy(
                             self.model_name,
                             temp
                         )
@@ -642,7 +642,7 @@ class BasicChatContextEngine():
         Executes the context engine with a user message.
         """
         context = self.compile(message)
-        response = self.client.create_completion(
+        response = self.client.create_completion_legacy(
             self.model_name, 
             context)
         self.store.store_response(response, "assistant")

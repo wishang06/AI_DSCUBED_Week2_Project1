@@ -22,6 +22,8 @@ dependencies = [
     "textual-dev>=1.7.0",
     "typer>=0.15.1",
     "setuptools>=75.6.0",
+    "prompt-toolkit>=3.0.50",
+    "pygments>=2.19.1",
 ]
 
 [project.scripts]
