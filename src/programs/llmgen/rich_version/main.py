@@ -1,13 +1,15 @@
-# src/programs/llmgen/main.py
-
 import typer
 from typing import Optional
 from pathlib import Path
 import sys
 from rich.console import Console
+from rich.traceback import install
 from dotenv import load_dotenv
 
 from src.programs.llmgen.rich_version.chat import LLMGenChat, LLMGenConfig
+
+# Install rich traceback handler with extended configuration
+install(show_locals=True, width=120, extra_lines=3, theme="monokai", word_wrap=True)
 
 app = typer.Typer(
     help="LLMGen Chat - Advanced LLM-powered chat interface",
@@ -71,8 +73,9 @@ def chat(
         chat.run()
         return 0
 
-    except Exception as e:
-        console.print(f"[red]Error starting LLMGen Chat: {str(e)}[/red]")
+    except Exception:
+        # Let rich.traceback handle the exception formatting
+        console.print_exception()
         return 1
 
 
@@ -80,8 +83,9 @@ def main():
     """Main entry point for the LLMGen CLI"""
     try:
         app()
-    except Exception as e:
-        console.print(f"[red]Fatal error: {str(e)}[/red]")
+    except Exception:
+        # Let rich.traceback handle the exception formatting
+        console.print_exception()
         sys.exit(1)
 
 

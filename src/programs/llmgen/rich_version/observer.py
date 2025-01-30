@@ -38,6 +38,10 @@ class LLMGenObserver(Observer):
                     raise Exception("Loading spinner not initialized.")
             else:
                 self.loading.update_status(event["message"])
+        elif event["type"] == EngineObserverEventType.AWAITING_STREAM_COMPLETION:
+            self.loading.live_context.stop()
+            self.cli_interface.print_streamed_message(event['response'])
+            self.loading.live_context.start()
 
 
     def get_input(self, event: Any):

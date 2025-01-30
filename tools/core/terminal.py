@@ -81,7 +81,7 @@ class TerminalOperations:
                 raise ValueError(f"File already exists: {path}")
             
             with open(path, 'w', encoding='utf-8') as f:
-                f.write(content)
+                f.write(content) if content else f.write("")
             return "File written successfully"
         except Exception as e:
             raise ValueError(f"Error writing file: {str(e)}")

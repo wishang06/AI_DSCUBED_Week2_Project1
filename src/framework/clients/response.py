@@ -16,6 +16,7 @@ class StreamedResponseStatus(Enum):
     CREATED = auto()
     REASONING = auto()
     GENERATING = auto()
+    TOOL_CALLING = auto()
     COMPLETED_WITH_CONTENT = auto()
     COMPLETED_WITH_TOOL_CALLS = auto()
     INTERRUPTED = auto()
@@ -129,7 +130,9 @@ class StreamedResponseWrapperOpenAI:
     # internal state
     response_reasoning: str = field(default="", init=False)
     response_content: str = field(default="", init=False)
+    response_tool_stream: str = field(default="", init=False)
     response_tool_calls: List[ChatCompletionMessageToolCall] = field(default_factory=list, init=False)
+    response_tool_calls_raw: List[ChatCompletionMessageToolCall] = field(default_factory=list, init=False)
     chunks: List[BaseModel] = field(default_factory=list, init=False)
     usage: ResponseTokenStats = field(default_factory=ResponseTokenStats, init=False)
     status: StreamedResponseStatus = field(default=StreamedResponseStatus.CREATED, init=False)
@@ -159,7 +162,12 @@ class StreamedResponseWrapperOpenAI:
         try:
             chunk = next(self.iter)
             self.chunks.append(chunk)
+
             delta = chunk.choices[0].delta
+
+            # Handle tool calls
+            if hasattr(delta, 'tool_calls') and delta.tool_calls:
+                self.response_tool_calls_raw.extend(delta.tool_calls)
 
             # Handle reasoning content if present
             reasoning_content = self.get_reasoning_content(chunk)
@@ -172,10 +180,6 @@ class StreamedResponseWrapperOpenAI:
                 self.response_content += delta.content
                 self.status = StreamedResponseStatus.GENERATING
 
-            # Handle tool calls
-            if hasattr(delta, 'tool_calls') and delta.tool_calls:
-                self.response_tool_calls.extend(delta.tool_calls)
-                self.status = StreamedResponseStatus.COMPLETED_WITH_TOOL_CALLS
 
             # Handle completion
             if chunk.choices[0].finish_reason:

@@ -92,14 +92,17 @@ Type 'exit' to quit
     def print_streamed_message(self, response: Any):
         # todo find proper type for response
         """Print a message that updates live within a panel."""
-        with Live(Panel(""), vertical_overflow='visible', auto_refresh=True) as live:
+        with Live(None, vertical_overflow='visible', auto_refresh=True) as live:
             for chunk in response:
                 if response.reasoning:
                     live.update(
                         Panel(Markdown(wrap_with_thinking(response.reasoning)+response.content), style="green",
                               title="Assistant"))
                 if response.content:
-                    live.update(Panel(response.content, border_style="green", title="Assistant"))
+                    live.update(Panel(Markdown(response.content), border_style="green", title="Assistant"))
+                if response.response_tool_stream:
+                    live.update(Panel(Markdown(response.response_tool_stream), border_style="green", title="Assistant"))
+
 
     def add_and_redraw(self, content: str, author: str, style: str = "blue"):
         """Print a boxed message with an author."""

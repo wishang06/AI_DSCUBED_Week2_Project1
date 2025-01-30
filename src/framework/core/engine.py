@@ -2,6 +2,7 @@ from typing import Any, List, Optional, Union, Callable
 
 from loguru import logger
 
+from src.framework.clients.response import StreamedResponseWrapperOpenAI
 from src.framework.types.callbacks import StatusCallback
 from src.framework.utils.callbacks import DummieStatusCallback
 from src.framework.clients.openai_client import ClientOpenAI
@@ -141,7 +142,13 @@ class ToolEngine(Engine):
             self.model_name,
             self.store.retrieve(),
             tools=self.tool_manager.tools_schema,
+            parallel_tool_calls=True
         )
+        if isinstance(response, StreamedResponseWrapperOpenAI):
+            self.subject.notify({
+                "type": EngineObserverEventType.AWAITING_STREAM_COMPLETION,
+                "response": response
+            })
         logger.debug(f"Response: {response}")
         if response.stop_reason == "tool_calls":
             self.store.store_tool_response(response)
@@ -154,6 +161,11 @@ class ToolEngine(Engine):
                 self.model_name,
                 self.store.retrieve(),
             )
+            if isinstance(response, StreamedResponseWrapperOpenAI):
+                self.subject.notify({
+                    "type": EngineObserverEventType.AWAITING_STREAM_COMPLETION,
+                    "response": response
+                })
             self.store.store_response(response, "assistant")
         else:
             self.store.store_response(response, "assistant")

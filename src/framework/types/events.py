@@ -9,3 +9,4 @@ class EngineObserverEventType(Enum):
     GET_INPUT = auto()
     GET_CONFIRMATION = auto()
     STREAM = auto()
+    AWAITING_STREAM_COMPLETION = auto()

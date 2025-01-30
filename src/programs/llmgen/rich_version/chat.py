@@ -1,8 +1,10 @@
 import os
 from typing import Optional, List
 from rich.console import Console
+from rich.traceback import install
 from loguru import logger
 from pydantic import BaseModel
+from rich.pretty import pprint
 
 from src.framework.core.engine import ToolEngine
 from src.interfaces.cli import ToolCLI
@@ -12,6 +14,10 @@ from tools.pwsh import execute_command
 from src.programs.llmgen.rich_version.observer import LLMGenObserver
 from src.programs.llmgen.rich_version.commands import CommandRegistry
 from src.framework.types.events import EngineObserverEventType
+from tools.test import weather
+
+# Configure rich traceback
+install(show_locals=True, width=120, extra_lines=3, theme="monokai", word_wrap=True)
 
 # Configure logging
 logger.remove()
@@ -103,6 +109,7 @@ Type your message to begin...
                 self.terminal.delete_file,
                 self.terminal.create_directory,
                 execute_command,
+                weather
             ],
             mode=self.config.mode,
             system_prompt=system_prompt,
@@ -136,8 +143,6 @@ Type your message to begin...
                         "type": EngineObserverEventType.STATUS_UPDATE,
                         "message": "done"
                     })
-                    if self.engine.streaming:
-                        self.cli.print_streamed_message(response)
 
                     # Process new messages
                     messages = self.engine.store.retrieve()
@@ -150,10 +155,17 @@ Type your message to begin...
                     if self.cli.get_input("Do you want to exit? (y/n): ").lower() == 'y':
                         break
                     continue
+                except:
+                    # Let rich handle the traceback formatting
+                    self.console.print_exception()
+                    pprint(self.engine.store.response_log[-1])
+                    pprint(self.engine.store.retrieve())
+                    self.cli.print_info("You can continue chatting or type 'exit' to quit.")
 
-        except Exception as e:
-            logger.error(f"Fatal error: {str(e)}")
-            self.cli.print_error(f"Fatal error: {str(e)}")
+        except:
+            # Let rich handle the traceback formatting
+            self.console.print_exception()
+            logger.exception("Fatal error in LLMGen Chat")
         finally:
             logger.info("Shutting down LLMGen Chat")
 
@@ -165,7 +177,8 @@ Type your message to begin...
                 if msg.get("role") == "user":
                     self.cli.add_message(msg.get("content"), "You", "blue")
                 elif msg.get("role") == "assistant":
-                    self.cli.add_message(msg.get("content"), "Assistant", "green")
+                    if msg.get("content"):
+                        self.cli.add_message(msg.get("content"), "Assistant", "green")
                 elif msg.get("role") == "tool":
                     self.cli.add_message(
                         msg.get("content")[:500],
