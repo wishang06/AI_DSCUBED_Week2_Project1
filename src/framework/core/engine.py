@@ -2,40 +2,30 @@ from typing import Any, List, Optional, Union, Callable
 
 from loguru import logger
 
-from src.framework.clients.response import StreamedResponseWrapperOpenAI
-from src.framework.types.callbacks import StatusCallback
-from src.framework.utils.callbacks import DummieStatusCallback
 from src.framework.clients.openai_client import ClientOpenAI
+from src.framework.clients.openrouter_client import ClientOpenRouter
+from src.framework.clients.response import StreamedResponseWrapperOpenAI
+from src.framework.core.observer import EngineSubject, Observer
 from src.framework.core.store import BasicChatContextStore, ContextStore
 from src.framework.tool_calling import *
-from src.framework.types.model_config import LLMInit
-from src.framework.core.observer import EngineSubject, Observer
+from src.framework.types.callbacks import StatusCallback
 from src.framework.types.engine import Engine
 from src.framework.types.events import EngineObserverEventType
+from src.framework.types.model_config import LLMInit
+from src.framework.utils.callbacks import DummieStatusCallback
 
-class ChatRoomEngine:
-    def __init__(self, client: ClientOpenAI, model_name: str, system_prompt: Optional[str] = None):
-        self.client = client
-        self.model_name = model_name
-        self.store = ContextStore()
-        if system_prompt:
-            self.store.set_system_prompt(system_prompt)
-        else:
-            self.store.set_system_prompt("You are a helpful assistant.")
-
-    def execute(self, message: str):
-        self.store.store_string(message, "user")
-        response = self.client.create_completion_legacy(
-            self.model_name,
-            self.store.retrieve()
-        )
-        self.store.store_response(response, "assistant")
-        return response
 
 class SimpleEngine(Engine):
     def __init__(self, client: ClientOpenAI, model: str):
         self.model = model
         self.subject = EngineSubject()
+        self.client = client
+
+    def subscribe(self, observer: Observer):
+        self.subject.register(observer)
+
+    def change_model(self, model: str, client: ClientOpenAI):
+        self.model = model
         self.client = client
 
     def execute(self, prompt: str):
@@ -49,10 +39,68 @@ class SimpleEngine(Engine):
         })
         return response.content
 
+class SimpleChatEngine(Engine):
+    def __init__(self, client: Union[ClientOpenAI, ClientOpenRouter],
+                 model: str,
+                 system_prompt: Optional[str] = None,
+                 stream_output: bool = False):
+        self.model = model
+        self.client = client
+        self.subject = EngineSubject()
+        self.store = ContextStore()
+        if system_prompt:
+            self.store.set_system_prompt(system_prompt)
+        if stream_output:
+            self.streaming = True
+            self._create_completion = self.client.create_streaming_completion
+        else:
+            self.streaming = False
+            self._create_completion = self.client.create_completion
+
+    def subscribe(self, observer: Observer):
+        self.subject.register(observer)
+
+    def change_model(self, model: str, client: Union[ClientOpenAI, ClientOpenRouter]):
+        self.model = model
+        self.client = client
+        self.update_completion_function()
+
+    def toggle_streaming(self):
+        if self.streaming:
+            self._create_completion = self.client.create_completion
+        else:
+            self._create_completion = self.client.create_streaming_completion
+        return self.streaming
+
+    def update_completion_function(self):
+        if self._create_completion.__self__ == self.client:
+            pass
+        else:
+            if self.streaming:
+                self._create_completion = self.client.create_streaming_completion
+            else:
+                self._create_completion = self.client.create_completion
+
+    def execute(self, prompt: str):
+        self.store.store_string(prompt, "user")
+        self.subject.notify({"type": EngineObserverEventType.STATUS_UPDATE,
+                             "message": "Getting LLM Response..."})
+        response = self._create_completion(
+            self.model,
+            self.store.retrieve()
+        )
+        if isinstance(response, StreamedResponseWrapperOpenAI):
+            self.subject.notify({
+                "type": EngineObserverEventType.AWAITING_STREAM_COMPLETION,
+                "response": response
+            })
+        self.store.store_response(response, "assistant")
+        return response
+
 class ToolEngine(Engine):
     def __init__(
             self,
-            client: ClientOpenAI,
+            client: Union[ClientOpenAI, ClientOpenRouter],
             model_name: str,
             tools: List[callable],
             mode: str = "normal",

@@ -47,3 +47,15 @@ Available Commands:
 /export [path] - Export chat history to JSON (default: chat_history.json)
 /load <path> - Load chat history from JSON file
 """
+
+
+
+class ModelClient:
+
+
+
+def client_model_match(model_name: str, provider: str) -> Optional[str]:
+    """Match a model name to a client model"""
+    if model_name in ["gpt-4o-mini", "gpt-4o", "gpt-4o-large"]:
+        return model_name
+    return None

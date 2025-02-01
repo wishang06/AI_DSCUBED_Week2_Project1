@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Union, Callable, TypeVar
-from enum import Enum
+from enum import Enum, auto
 from traceback import format_exc
 from loguru import logger
 
@@ -10,21 +10,21 @@ T = TypeVar('T')
 
 class BlockState(Enum):
     """State management for blocks"""
-    PENDING = "pending"
-    RUNNING = "running"
-    COMPLETED = "completed"
-    FAILED = "failed"
+    PENDING = auto()
+    RUNNING = auto()
+    COMPLETED = auto()
+    FAILED = auto()
 
 
 class BlockExecutionMessage(Enum):
     """Block execution result messages"""
-    ERROR = "error"
-    SUCCESS = "success"
-    END_WORKFLOW = "end_workflow"
+    ERROR = auto()
+    SUCCESS = auto()
+    END_WORKFLOW = auto()
 
 
 @dataclass
-class Result:
+class WorkflowResult:
     """Result object to pass between blocks"""
     name: str
     value: Any
@@ -37,9 +37,9 @@ class Result:
 @dataclass
 class BlockExecutionResult:
     """Comprehensive result of block execution"""
-    block: 'Block'
+    block: Block
     message: BlockExecutionMessage
-    result: Optional[Result] = None
+    result: Optional[WorkflowResult] = None
     error: Optional[Exception] = None
     traceback: Optional[str] = None
 
@@ -83,10 +83,6 @@ class WorkflowObserver:
         raise NotImplementedError("Update method must be implemented in subclass")
 
 
-
-
-
-
 class Workflow:
     """Main workflow class"""
 
@@ -96,7 +92,7 @@ class Workflow:
         self.context = WorkflowContext()
         self.queue: List[str] = []
         self.current_block: Optional[Block] = None
-        self.final_result: Optional[Result] = None
+        self.final_result: Optional[WorkflowResult] = None
         self.subject = WorkflowSubject()
 
     def __getitem__(self, key: str) -> Block:
@@ -138,7 +134,7 @@ class Workflow:
             raise ValueError("No blocks defined in workflow")
         return True
 
-    def run(self) -> Optional[Result]:
+    def run(self) -> Optional[WorkflowResult]:
         """Execute the workflow"""
         try:
             self.validate()

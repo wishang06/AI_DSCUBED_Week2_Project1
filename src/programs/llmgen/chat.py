@@ -1,20 +1,25 @@
-import os
-from typing import Optional, List
+from typing import Optional, List, Union
 from rich.console import Console
 from rich.traceback import install
 from loguru import logger
 from pydantic import BaseModel
 from rich.pretty import pprint
 
-from src.framework.core.engine import ToolEngine
+from src.framework.core.engine import ToolEngine, SimpleChatEngine
 from src.interfaces.cli import ToolCLI
-from src.framework.clients import ClientOpenAI
+from src.framework.clients.openrouter_client import ClientOpenRouter
 from tools.core.terminal import TerminalOperations
 from tools.pwsh import execute_command
-from src.programs.llmgen.rich_version.observer import LLMGenObserver
-from src.programs.llmgen.rich_version.commands import CommandRegistry
+from src.programs.llmgen.observer import LLMGenObserver
+from src.programs.llmgen.commands import CommandRegistry
 from src.framework.types.events import EngineObserverEventType
 from tools.test import weather
+from src.framework.utils.runtime import init_global_runtime, get_global_runtime
+from src.framework.clients.model_manager import set_model, ClientManager
+from src.framework.types.models import ModelRequestConfig
+from src.framework.types.engine_types import EngineTypeMap, EngineType
+from src.framework.types.clients import ClientType
+from src.framework.types.openrouter_providers import OpenRouterProvider
 
 # Configure rich traceback
 install(show_locals=True, width=120, extra_lines=3, theme="monokai", word_wrap=True)
@@ -24,43 +29,59 @@ logger.remove()
 logger.add("outputs/logs/llmgen.log", rotation="10 MB", level="INFO")
 logger.info("Starting LLMGen Chat")
 
-# Constants
-DEFAULT_MODEL = "gpt-4o-mini"
-DEFAULT_SYSTEM_PROMPT_PATH = "prompts/core/agents/system.md"
-
 
 class LLMGenConfig(BaseModel):
     """Configuration model for LLMGen Chat"""
-    mode: str
-    model_name: str = DEFAULT_MODEL
-    system_prompt_path: Optional[str] = DEFAULT_SYSTEM_PROMPT_PATH
-    api_key: Optional[str] = None
+    model_request_config: ModelRequestConfig
+    engine: EngineType = EngineType.SimpleChatEngine
+    system_prompt_path: Optional[str] = None
     streaming: bool = False
+    tools: bool = False
 
 
 class LLMGenChat:
     def __init__(self, config: LLMGenConfig):
         """Initialize LLMGen Chat with configuration"""
+        # Initialize global runtime for model manager
+        init_global_runtime()
         self.config = config
+        self.model_request_config = config.model_request_config
         self.console = Console()
-        self.api_key = config.api_key or os.getenv("OPENAI_API_KEY")
-        if not self.api_key:
-            raise ValueError("No API key provided and OPENAI_API_KEY not found in environment")
 
         self.streaming = config.streaming
-        self.client = ClientOpenAI.create_openai(self.api_key)
+        self.engine_type = config.engine
+
+        # Set up initial model and client
+        self.client_manager = ClientManager()
+        self.set_model(
+            self.model_request_config.model_name,
+            self.model_request_config.provider,
+            self.model_request_config.openrouter_providers
+        )
+
+        # Initialize tools and interface components
         self.terminal = TerminalOperations(".")
-
-        # Initialize CLI interface
         self.cli = self._setup_cli()
-
-        # Initialize command registry
         self.commands = CommandRegistry(self)
 
         # Initialize engine with observer
-        self.engine = self._setup_engine()
+        self.engine = self._setup_engine(self.engine_type)
         self.observer = LLMGenObserver(self.cli)
         self.engine.subscribe(self.observer)
+
+    def set_model(self,
+                  model_name: str,
+                  provider: Optional[ClientType] = None,
+                  openrouter_providers: Optional[List[OpenRouterProvider]] = None):
+        """Update the model configuration"""
+        self.client, self.model = set_model(
+            model_name,
+            provider,
+            openrouter_providers
+        )
+        # If engine exists, update it with new client and model
+        if hasattr(self, 'engine'):
+            self.engine.change_model(self.model, self.client)
 
     def _setup_cli(self) -> ToolCLI:
         """Set up the CLI interface"""
@@ -72,7 +93,7 @@ Available commands:
 - /clear: Clear chat history
 - /help: Show this menu
 - /model <name>: Switch to a different model
-- /mode <mode>: Change engine mode
+- /provider <name>: Switch to a different provider
 - /system <path>: Load new system prompt
 - /tools: List available tools
 - /history: Show chat history
@@ -83,39 +104,44 @@ Type your message to begin...
 """
         return ToolCLI(menu_text=menu_text)
 
-    def _setup_engine(self) -> ToolEngine:
-        """Set up the tool engine"""
+    def _setup_engine(self, engine_type: EngineType) -> Union[ToolEngine, SimpleChatEngine]:
+        """Set up the chat engine"""
         system_prompt = None
-
-        # Only try to load system prompt if path is provided
         if self.config.system_prompt_path:
             try:
                 with open(self.config.system_prompt_path, 'r', encoding='utf-8') as file:
                     system_prompt = file.read()
             except FileNotFoundError:
                 logger.warning(f"System prompt file not found at {self.config.system_prompt_path}")
-                system_prompt = "You are a helpful assistant that uses available tools."
-        else:
-            # Use default system prompt when no path provided
-            system_prompt = "You are a helpful assistant that uses available tools."
+                system_prompt = "You are a helpful assistant."
 
-        return ToolEngine(
-            client=self.client,
-            model_name=self.config.model_name,
-            tools=[
-                self.terminal.list_directory,
-                self.terminal.read_file,
-                self.terminal.write_file,
-                self.terminal.delete_file,
-                self.terminal.create_directory,
-                execute_command,
-                weather
-            ],
-            mode=self.config.mode,
-            system_prompt=system_prompt,
-            confirm_function_call=True,
-            stream_output=self.streaming
-        )
+        engine_class = EngineTypeMap[engine_type]
+
+        if self.config.tools:
+            return engine_class(
+                client=self.client,
+                model_name=self.model,
+                tools=[
+                    self.terminal.list_directory,
+                    self.terminal.read_file,
+                    self.terminal.write_file,
+                    self.terminal.delete_file,
+                    self.terminal.create_directory,
+                    execute_command,
+                    weather
+                ],
+                mode="normal",
+                system_prompt=system_prompt,
+                confirm_function_call=True,
+                stream_output=self.streaming
+            )
+        else:
+            return engine_class(
+                client=self.client,
+                model=self.model,
+                system_prompt=system_prompt,
+                stream_output=self.streaming
+            )
 
     def run(self):
         """Run the chat interface"""

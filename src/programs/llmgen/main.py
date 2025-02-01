@@ -6,7 +6,10 @@ from rich.console import Console
 from rich.traceback import install
 from dotenv import load_dotenv
 
-from src.programs.llmgen.rich_version.chat import LLMGenChat, LLMGenConfig
+from src.framework.types.models import ModelRequestConfig
+from src.programs.llmgen.chat import LLMGenChat, LLMGenConfig
+from src.framework.clients.model_manager import set_model
+from src.framework.types.engine_types import EngineType, EngineTypeMap
 
 # Install rich traceback handler with extended configuration
 install(show_locals=True, width=120, extra_lines=3, theme="monokai", word_wrap=True)
@@ -21,10 +24,10 @@ console = Console()
 
 @app.command()
 def chat(
-        mode: str = typer.Option(
-            "normal",
-            "--mode", "-m",
-            help="Engine mode (normal, minimal, chain, linear_chain)"
+        engine: str = typer.Option(
+            "SimpleChatEngine",
+            "--engine", "-e",
+            help="Engine (SimpleChatEngine, ToolEngine)"
         ),
         model: str = typer.Option(
             "gpt-4o-mini",
@@ -56,10 +59,13 @@ def chat(
 
         # Create configuration
         config = LLMGenConfig(
-            mode=mode,
-            model_name=model,
-            system_prompt_path=str(system_prompt) if system_prompt else None,
-            streaming=streaming
+            model_request_config=ModelRequestConfig(
+                model_name=model
+            ),
+            engine = EngineTypeMap[engine],
+            system_prompt_path=system_prompt,
+            streaming=streaming,
+            tools=False
         )
 
         # Initialize and run chat

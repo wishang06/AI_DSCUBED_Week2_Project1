@@ -1,16 +1,12 @@
-from typing import List, Any, Optional, Callable
+from typing import List, Any, Optional
 from abc import ABC, abstractmethod
 from openai.types.chat.chat_completion_message_tool_call import ChatCompletionMessageToolCall
-from pyasn1.type.univ import Boolean
 from pydantic import BaseModel
 from dataclasses import dataclass, field
 from enum import Enum, auto
 import openai
 
-class OpenAIReasoningAPIFormat(Enum):
-    OPENROUTER = auto()
-    DEEPSEEK = auto()
-
+from src.framework.types.clients import OpenAIReasoningAPIFormat
 
 class StreamedResponseStatus(Enum):
     CREATED = auto()

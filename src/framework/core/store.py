@@ -111,8 +111,7 @@ class ContextStore:
 
     def retrieve(self):
         result = self.chat_history.copy()
-        if self.system_prompt != "":
-            result.insert(0, {"role": "system", "content": self.system_prompt})
+        result.insert(0, {"role": "system", "content": self.system_prompt})
         return result
         
     def clear(self):

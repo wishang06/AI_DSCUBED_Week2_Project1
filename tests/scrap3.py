@@ -15,7 +15,8 @@ from rich.markdown import Markdown
 from rich import print
 from rich.console import Group
 from rich.rule import Rule
-from src.framework.clients.response import StreamedResponseWrapperOpenAI, OpenAIReasoningAPIFormat
+from src.framework.clients.response import StreamedResponseWrapperOpenAI
+from src.framework.types.clients import OpenAIReasoningAPIFormat
 
 context_store = ContextStore("You are a helpful assistant")
 

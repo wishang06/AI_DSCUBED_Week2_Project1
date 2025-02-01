@@ -1,17 +1,22 @@
-from typing import Dict, Callable
+from typing import Dict, Callable, List
 import json
 from pathlib import Path
+from src.framework.clients.model_manager import set_model
+from src.framework.types.clients import ClientType
+from src.framework.types.openrouter_providers import OpenRouterProvider
+from src.framework.clients.model_registry import ModelRegistry
 
 
 class CommandRegistry:
     def __init__(self, chat_instance):
         self.chat = chat_instance
+        self.model_registry = ModelRegistry()
         self.commands: Dict[str, Callable] = {
             '/exit': self._handle_exit,
             '/clear': self._handle_clear,
             '/help': self._handle_help,
             '/model': self._handle_model,
-            '/mode': self._handle_mode,
+            '/provider': self._handle_provider,
             '/system': self._handle_system,
             '/tools': self._handle_tools,
             '/history': self._handle_history,
@@ -48,24 +53,72 @@ class CommandRegistry:
     def _handle_model(self, *args):
         """Handle the model switch command"""
         if not args:
-            self.chat.cli.print_error("Please specify a model name")
+            # List available models
+            models = self.model_registry.list_models()
+            self.chat.cli.print_message(
+                "Available models:\n" + "\n".join(f"- {model}" for model in models),
+                "Models",
+                "cyan"
+            )
             return
+
+        model_name = args[0]
         try:
-            self.chat.engine.model_name = args[0]
-            self.chat.cli.print_success(f"Switched to model: {args[0]}")
+            # Get model info to validate
+            model_info = self.model_registry.get_model_info(model_name)
+
+            # Use current provider if compatible, otherwise use default
+            current_provider = self.chat.model_request_config.provider
+            if current_provider not in model_info.allowed_providers:
+                current_provider = model_info.default_provider
+
+            # Update model configuration
+            self.chat.set_model(
+                model_name,
+                current_provider,
+                model_info.openrouter_providers
+            )
+
+            self.chat.cli.print_success(
+                f"Switched to model: {model_name} with provider: {current_provider.name}"
+            )
         except Exception as e:
             self.chat.cli.print_error(f"Error switching model: {str(e)}")
 
-    def _handle_mode(self, *args):
-        """Handle the mode switch command"""
+    def _handle_provider(self, *args):
+        """Handle the provider switch command"""
         if not args:
-            self.chat.cli.print_error("Please specify a mode (normal, minimal, chain, linear_chain)")
+            # List available providers for current model
+            model_info = self.model_registry.get_model_info(self.chat.model)
+            providers = [p.name for p in model_info.allowed_providers]
+            self.chat.cli.print_message(
+                f"Available providers for {self.chat.model}:\n" +
+                "\n".join(f"- {provider}" for provider in providers),
+                "Providers",
+                "cyan"
+            )
             return
+
+        provider_name = args[0].upper()
         try:
-            self.chat.engine._initialize_mode(args[0])
-            self.chat.cli.print_success(f"Switched to mode: {args[0]}")
+            # Convert string to ClientType enum
+            provider = ClientType[provider_name]
+
+            # Verify provider is allowed for current model
+            model_info = self.model_registry.get_model_info(self.chat.model)
+            if provider not in model_info.allowed_providers:
+                raise ValueError(
+                    f"Provider {provider_name} not supported for model {self.chat.model}"
+                )
+
+            # Update model with new provider
+            self.chat.set_model(self.chat.model, provider)
+            self.chat.cli.print_success(f"Switched to provider: {provider_name}")
+
+        except KeyError:
+            self.chat.cli.print_error(f"Unknown provider: {provider_name}")
         except Exception as e:
-            self.chat.cli.print_error(f"Error switching mode: {str(e)}")
+            self.chat.cli.print_error(f"Error switching provider: {str(e)}")
 
     def _handle_system(self, *args):
         """Handle the system prompt change command"""
@@ -86,6 +139,10 @@ class CommandRegistry:
 
     def _handle_tools(self, *args):
         """Handle the tools list command"""
+        if not hasattr(self.chat.engine, 'tool_manager'):
+            self.chat.cli.print_info("No tools available in current engine mode")
+            return
+
         tools = self.chat.engine.tool_manager.tools
         tool_list = "\n".join([f"- {t.funct.__name__}: {t.function_description}" for t in tools])
         self.chat.cli.print_message(f"Available tools:\n\n{tool_list}", "Tools", "cyan")

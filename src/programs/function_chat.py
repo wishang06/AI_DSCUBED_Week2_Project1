@@ -7,7 +7,8 @@ from pydantic import BaseModel
 
 from src.framework.core.engine import ToolEngine
 from src.interfaces.cli import ToolCLI
-from src.framework.clients import ClientOpenAI
+from src.framework.clients.openai_client import ClientOpenAI
+from src.framework.clients.openrouter_client import ClientOpenRouter
 from tools.core.terminal import TerminalOperations
 from src.framework.utils import CLIStatusCallback
 from tools.pwsh import execute_command
@@ -19,7 +20,8 @@ logger.add("outputs/logs/function_chat.log", rotation="10 MB", level="INFO")
 logger.info("Starting Function Chat")
 
 # Constants
-DEFAULT_MODEL = "gpt-4o-mini"
+# DEFAULT_MODEL = "gpt-4o-mini"
+DEFAULT_MODEL = "deepseek/deepseek-r1-distill-qwen-32b"
 DEFAULT_SYSTEM_PROMPT_PATH = "prompts/core/agents/function_maker.md"
 
 
@@ -40,7 +42,8 @@ class FunctionChat:
         if not self.api_key:
             raise ValueError("No API key provided and OPENAI_API_KEY not found in environment")
 
-        self.client = ClientOpenAI.create_openai(self.api_key)
+        # self.client = ClientOpenAI.create_openai(self.api_key)
+        self.client = ClientOpenRouter(self.api_key)
         self.terminal = TerminalOperations(".")
 
         # Initialize CLI interface
