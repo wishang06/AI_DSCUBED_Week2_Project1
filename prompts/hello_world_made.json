@@ -1,7 +1,0 @@
-{
-    "args": {
-        "arg1": "description1",
-        "arg2": "description2"
-    },
-    "prompt": "this world is made from {arg1} and {arg2}"
-}

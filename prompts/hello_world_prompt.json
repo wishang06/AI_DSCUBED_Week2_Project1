@@ -1,7 +1,0 @@
-{
-    "args": {
-        "name": "Name of the person",
-        "place": "Place"
-    },
-    "prompt": "Hello, {name}! Welcome to {place}!"
-}
