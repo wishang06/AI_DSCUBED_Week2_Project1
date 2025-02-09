@@ -1,4 +1,4 @@
-from src.framework.clients.response import ResponseWrapper, ResponseWrapperOpenAI, StreamedResponseWrapperOpenAI
+from framework.clients.response import ResponseWrapper, ResponseWrapperOpenAI, StreamedResponseWrapperOpenAI
 from typing import Dict, Any, List, Optional, Union
 from loguru import logger
 from openai.types.chat.chat_completion_message_tool_call import ChatCompletionMessageToolCall, Function

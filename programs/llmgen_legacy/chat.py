@@ -5,21 +5,20 @@ from loguru import logger
 from pydantic import BaseModel
 from rich.pretty import pprint
 
-from src.framework.core.engine import ToolEngine, SimpleChatEngine
-from src.interfaces.cli import ToolCLI
-from src.framework.clients.openrouter_client import ClientOpenRouter
+from framework.core.engine import ToolEngine, SimpleChatEngine
+from interfaces.cli import ToolCLI
 from tools.core.terminal import TerminalOperations
 from tools.pwsh import execute_command
-from src.programs.llmgen.observer import LLMGenObserver
-from src.programs.llmgen.commands import CommandRegistry
-from src.framework.types.events import EngineObserverEventType
+from programs.llmgen_legacy.observer import LLMGenObserver
+from programs.llmgen_legacy.commands import CommandRegistry
+from framework.types.events import EngineObserverEventType
 from tools.test import weather
-from src.framework.utils.runtime import init_global_runtime, get_global_runtime
-from src.framework.clients.model_manager import set_model, ClientManager
-from src.framework.types.models import ModelRequestConfig
-from src.framework.types.engine_types import EngineTypeMap, EngineType
-from src.framework.types.clients import ClientType
-from src.framework.types.openrouter_providers import OpenRouterProvider
+from framework.utils.runtime import init_global_runtime
+from framework.clients.model_manager import set_model, ModelManager
+from framework.types.models import ModelRequestConfig
+from framework.types.engine_types import EngineTypeMap, EngineType
+from framework.types.clients import ClientType
+from framework.types.openrouter_providers import OpenRouterProvider
 
 # Configure rich traceback
 install(show_locals=True, width=120, extra_lines=3, theme="monokai", word_wrap=True)
@@ -32,6 +31,7 @@ logger.info("Starting LLMGen Chat")
 
 class LLMGenConfig(BaseModel):
     """Configuration model for LLMGen Chat"""
+
     model_request_config: ModelRequestConfig
     engine: EngineType = EngineType.SimpleChatEngine
     system_prompt_path: Optional[str] = None
@@ -52,11 +52,11 @@ class LLMGenChat:
         self.engine_type = config.engine
 
         # Set up initial model and client
-        self.client_manager = ClientManager()
+        self.client_manager = ModelManager()
         self.set_model(
             self.model_request_config.model_name,
-            self.model_request_config.provider,
-            self.model_request_config.openrouter_providers
+            self.model_request_config.client,
+            self.model_request_config.openrouter_providers,
         )
 
         # Initialize tools and interface components
@@ -69,18 +69,16 @@ class LLMGenChat:
         self.observer = LLMGenObserver(self.cli)
         self.engine.subscribe(self.observer)
 
-    def set_model(self,
-                  model_name: str,
-                  provider: Optional[ClientType] = None,
-                  openrouter_providers: Optional[List[OpenRouterProvider]] = None):
+    def set_model(
+        self,
+        model_name: str,
+        provider: Optional[ClientType] = None,
+        openrouter_providers: Optional[List[OpenRouterProvider]] = None,
+    ):
         """Update the model configuration"""
-        self.client, self.model = set_model(
-            model_name,
-            provider,
-            openrouter_providers
-        )
+        self.client, self.model = set_model(model_name, provider, openrouter_providers)
         # If engine exists, update it with new client and model
-        if hasattr(self, 'engine'):
+        if hasattr(self, "engine"):
             self.engine.change_model(self.model, self.client)
 
     def _setup_cli(self) -> ToolCLI:
@@ -104,15 +102,21 @@ Type your message to begin...
 """
         return ToolCLI(menu_text=menu_text)
 
-    def _setup_engine(self, engine_type: EngineType) -> Union[ToolEngine, SimpleChatEngine]:
+    def _setup_engine(
+        self, engine_type: EngineType
+    ) -> Union[ToolEngine, SimpleChatEngine]:
         """Set up the chat engine"""
         system_prompt = None
         if self.config.system_prompt_path:
             try:
-                with open(self.config.system_prompt_path, 'r', encoding='utf-8') as file:
+                with open(
+                    self.config.system_prompt_path, "r", encoding="utf-8"
+                ) as file:
                     system_prompt = file.read()
             except FileNotFoundError:
-                logger.warning(f"System prompt file not found at {self.config.system_prompt_path}")
+                logger.warning(
+                    f"System prompt file not found at {self.config.system_prompt_path}"
+                )
                 system_prompt = "You are a helpful assistant."
 
         engine_class = EngineTypeMap[engine_type]
@@ -128,25 +132,27 @@ Type your message to begin...
                     self.terminal.delete_file,
                     self.terminal.create_directory,
                     execute_command,
-                    weather
+                    weather,
                 ],
                 mode="normal",
                 system_prompt=system_prompt,
                 confirm_function_call=True,
-                stream_output=self.streaming
+                stream_output=self.streaming,
             )
         else:
             return engine_class(
                 client=self.client,
                 model=self.model,
                 system_prompt=system_prompt,
-                stream_output=self.streaming
+                stream_output=self.streaming,
             )
 
     def run(self):
         """Run the chat interface"""
         try:
-            self.cli.print_info("Welcome to LLMGen Chat! Type /help for available commands.")
+            self.cli.print_info(
+                "Welcome to LLMGen Chat! Type /help for available commands."
+            )
             count = 1
 
             while True:
@@ -154,7 +160,7 @@ Type your message to begin...
                     user_input = self.cli.get_input()
 
                     # Handle commands
-                    if user_input.startswith('/'):
+                    if user_input.startswith("/"):
                         if self.commands.handle_command(user_input):
                             continue
 
@@ -165,10 +171,12 @@ Type your message to begin...
 
                     # Execute the request
                     response = self.engine.execute(user_input)
-                    self.engine.subject.notify({
-                        "type": EngineObserverEventType.STATUS_UPDATE,
-                        "message": "done"
-                    })
+                    self.engine.subject.notify(
+                        {
+                            "type": EngineObserverEventType.STATUS_UPDATE,
+                            "message": "done",
+                        }
+                    )
 
                     # Process new messages
                     messages = self.engine.store.retrieve()
@@ -178,7 +186,10 @@ Type your message to begin...
                     self.cli.redraw()
 
                 except KeyboardInterrupt:
-                    if self.cli.get_input("Do you want to exit? (y/n): ").lower() == 'y':
+                    if (
+                        self.cli.get_input("Do you want to exit? (y/n): ").lower()
+                        == "y"
+                    ):
                         break
                     continue
                 except:
@@ -186,7 +197,9 @@ Type your message to begin...
                     self.console.print_exception()
                     pprint(self.engine.store.response_log[-1])
                     pprint(self.engine.store.retrieve())
-                    self.cli.print_info("You can continue chatting or type 'exit' to quit.")
+                    self.cli.print_info(
+                        "You can continue chatting or type 'exit' to quit."
+                    )
 
         except:
             # Let rich handle the traceback formatting
@@ -207,7 +220,5 @@ Type your message to begin...
                         self.cli.add_message(msg.get("content"), "Assistant", "green")
                 elif msg.get("role") == "tool":
                     self.cli.add_message(
-                        msg.get("content")[:500],
-                        msg.get("name", "Tool"),
-                        "yellow"
+                        msg.get("content")[:500], msg.get("name", "Tool"), "yellow"
                     )

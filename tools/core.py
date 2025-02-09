@@ -1,5 +1,5 @@
-from src.framework.prompts import Prompt
-from src.framework.tool_calling import openai_function_wrapper
+from framework.prompts import Prompt
+from framework.tool_calling import openai_function_wrapper
 import json
 
 @openai_function_wrapper(function_description="Create a proper reusable \
@@ -37,7 +37,7 @@ def load_and_run_instruction(instruction: str):
     engine.execute_instructions([instruction])
 
 if __name__ == "__main__":
-    from src.framework.utils.local_test import setup_test
+    from framework.utils.local_test import setup_test
     client, engine = setup_test()
     engine.add_tool(make_prompt)
     engine.execute_instructions([

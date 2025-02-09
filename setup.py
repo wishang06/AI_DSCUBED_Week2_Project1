@@ -1,13 +1,13 @@
 from setuptools import setup, find_packages
-from setuptools.config.expand import entry_points
 
 setup(
     name="llmgine",
     version="0.1.0",
-    packages=find_packages(),
+    package_dir={"": "src"},  # This tells setuptools that packages are under src/
+    packages=find_packages(where="src"),  # This will find all packages
     entry_points={
         "console_scripts": [
-            "llmgine=src.programs.cli_router:app",
+            "llmgine=programs.cli_router:app",
         ],
     },
 )

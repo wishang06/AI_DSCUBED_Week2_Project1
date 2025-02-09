@@ -1,13 +1,15 @@
 from enum import Enum, auto
 from typing import Dict
 
+
 class ClientType(Enum):
-    OPENAI = auto()
-    GEMINI_VERTEX = auto()
-    GEMINI_API = auto()
-    OPENROUTER = auto()
-    DEEPSEEK = auto()
-    ANTHROPIC = auto()
+    OPENAI = "openai"
+    GEMINI_VERTEX = "gemini_vertex"
+    GEMINI_API = "gemini_api"
+    OPENROUTER = "openrouter"
+    DEEPSEEK = "deepseek"
+    ANTHROPIC = "anthropic"
+
 
 ClientKeyMap: Dict[ClientType, str] = {
     ClientType.OPENAI: "OPENAI_API_KEY",
@@ -16,6 +18,7 @@ ClientKeyMap: Dict[ClientType, str] = {
     ClientType.DEEPSEEK: "DEEPSEEK_API_KEY",
     ClientType.ANTHROPIC: "ANTHROPIC_API_KEY",
 }
+
 
 class OpenAIReasoningAPIFormat(Enum):
     OPENROUTER = auto()

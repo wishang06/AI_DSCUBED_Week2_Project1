@@ -1,6 +1,6 @@
 import os
 from typing import List
-from src.framework.tool_calling import openai_function_wrapper
+from framework.tool_calling import openai_function_wrapper
 from loguru import logger
 
 class TerminalOperations:

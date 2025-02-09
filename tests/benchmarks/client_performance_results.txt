@@ -1,0 +1,57 @@
+Filename: C:\Users\natha\dev\llmgine\tests\benchmarks\client_performance.py
+
+Line #    Mem usage    Increment  Occurrences   Line Contents
+=============================================================
+    14     79.0 MiB     79.0 MiB           1   @profile
+    15                                         def create_multiple_clients(n=100):
+    16                                             """Create multiple OpenAI clients"""
+    17     79.0 MiB      0.0 MiB           1       clients = []
+    18     79.0 MiB      0.0 MiB           1       start_mem = get_process_memory()
+    19     79.0 MiB      0.0 MiB           1       start_time = time.time()
+    20
+    21    166.2 MiB      0.0 MiB         101       for _ in range(n):
+    22    166.2 MiB     87.1 MiB         100           client = openai.OpenAI(api_key="dummy-key")
+    23    166.2 MiB      0.0 MiB         100           clients.append(client)
+    24
+    25    166.2 MiB      0.0 MiB           1       end_time = time.time()
+    26    166.2 MiB      0.0 MiB           1       end_mem = get_process_memory()
+    27
+    28    166.2 MiB      0.0 MiB           1       return {
+    29    166.2 MiB      0.0 MiB           1           "time_taken": end_time - start_time,
+    30    166.2 MiB      0.0 MiB           1           "memory_per_client": (end_mem - start_mem) / n,
+    31    166.2 MiB      0.0 MiB           1           "total_memory": end_mem - start_mem
+    32                                             }
+
+
+Filename: C:\Users\natha\dev\llmgine\tests\benchmarks\client_performance.py
+
+Line #    Mem usage    Increment  Occurrences   Line Contents
+=============================================================
+    35    166.2 MiB    166.2 MiB           1   @profile
+    36                                         def reuse_single_client(n=100):
+    37                                             """Simulate reusing a single client for multiple operations"""
+    38    166.2 MiB      0.0 MiB           1       start_mem = get_process_memory()
+    39    166.2 MiB      0.0 MiB           1       start_time = time.time()
+    40
+    41    167.1 MiB      0.9 MiB           1       client = openai.OpenAI(api_key="dummy-key")
+    42                                             # Simulate n operations using the same client
+    43    167.1 MiB      0.0 MiB         101       for _ in range(n):
+    44    167.1 MiB      0.0 MiB         100           _ = client.base_url  # Simple property access to simulate usage
+    45
+    46    167.1 MiB      0.0 MiB           1       end_time = time.time()
+    47    167.1 MiB      0.0 MiB           1       end_mem = get_process_memory()
+    48
+    49    167.1 MiB      0.0 MiB           1       return {
+    50    167.1 MiB      0.0 MiB           1           "time_taken": end_time - start_time,
+    51    167.1 MiB      0.0 MiB           1           "memory_total": end_mem - start_mem
+    52                                             }
+
+
+Multiple Clients Benchmark:
+Time taken: 50.9944 seconds
+Memory per client: 0.87 MB
+Total memory: 87.16 MB
+
+Single Client Benchmark:
+Time taken: 0.5325 seconds
+Total memory: 0.86 MB

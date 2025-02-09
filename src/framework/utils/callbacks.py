@@ -1,4 +1,4 @@
-from src.framework.types.callbacks import StatusCallback, SimpleCallback
+from framework.types.callbacks import StatusCallback, SimpleCallback
 
 class DummieStatusCallback(StatusCallback):
     def execute(self, message: str) -> None:

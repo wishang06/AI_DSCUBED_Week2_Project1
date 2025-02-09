@@ -3,7 +3,7 @@ from typing import Dict, List, Optional, Any
 from notion_client import Client
 import json
 
-from src.framework.tool_calling import openai_function_wrapper
+from framework.tool_calling import openai_function_wrapper
 
 # Instantiate your Notion client. Expect that NOTION_TOKEN is set in your environment.
 notion = Client(auth=os.environ.get("NOTION_TOKEN"))

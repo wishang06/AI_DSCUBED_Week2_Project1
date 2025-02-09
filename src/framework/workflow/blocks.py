@@ -1,4 +1,4 @@
-from src.framework.types import Block
+from framework.types import Block
 from typing import Any, Callable, Dict, Optional, Union
 
 class FunctionBlock:

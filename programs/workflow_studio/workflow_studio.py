@@ -9,9 +9,9 @@ from rich.text import Text
 from loguru import logger
 from datetime import datetime
 
-from src.framework.workflow.workflow import Workflow, BinaryDecision
-from src.framework.core.observer import Observer
-from src.interfaces.cli import ToolCLI
+from framework.workflow.workflow import Workflow, BinaryDecision
+from framework.core.observer import Observer
+from interfaces.cli import ToolCLI
 
 # Configure logging
 logger.remove()

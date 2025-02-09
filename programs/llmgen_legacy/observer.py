@@ -1,8 +1,8 @@
 from typing import Any
-from src.framework.core.observer import Observer
-from src.interfaces.cli import ToolCLI
+from framework.core.observer import Observer
+from interfaces.cli import ToolCLI
 from rich.prompt import Confirm
-from src.framework.types.events import EngineObserverEventType
+from framework.types.events import EngineObserverEventType
 
 
 class LLMGenObserver(Observer):

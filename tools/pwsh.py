@@ -2,7 +2,7 @@ from typing import Optional
 import subprocess
 import os
 from loguru import logger
-from src.framework.tool_calling import openai_function_wrapper
+from framework.tool_calling import openai_function_wrapper
 
 @openai_function_wrapper(
     funct_descript="Execute a PowerShell command",

@@ -1,9 +1,9 @@
 from typing import AsyncGenerator, Generator, Optional, Dict, Any
 from openai.types.chat import ChatCompletionChunk, ChatCompletion
-from src.framework.clients.response import ResponseWrapper
-from src.framework.core.store import ContextStore
-from src.framework.core.observer import EngineSubject, Observer
-from src.framework.clients.openai_client import ClientOpenAI
+from framework.clients.response import ResponseWrapper
+from framework.core.store import ContextStore
+from framework.core.observer import EngineSubject, Observer
+from framework.clients.openai_client import ClientOpenAI
 
 
 class StreamingResponseWrapper(ResponseWrapper):

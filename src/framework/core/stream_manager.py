@@ -6,7 +6,7 @@ from rich.text import Text
 from typing import List, Optional
 import asyncio
 from dataclasses import dataclass
-from src.framework.core.streaming import StreamingEngine, StreamingClientOpenAI
+from framework.core.streaming import StreamingEngine, StreamingClientOpenAI
 
 
 @dataclass

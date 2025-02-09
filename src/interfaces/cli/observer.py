@@ -1,6 +1,6 @@
-from src.framework.core.observer import Observer
+from framework.core.observer import Observer
 from typing import Any
-from src.interfaces.cli import ToolCLI
+from interfaces.cli import ToolCLI
 from rich.prompt import Confirm
 
 class CLIObserver(Observer):

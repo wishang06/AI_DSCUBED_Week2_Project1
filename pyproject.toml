@@ -25,10 +25,11 @@ dependencies = [
     "prompt-toolkit>=3.0.50",
     "pygments>=2.19.1",
     "contextvars>=2.4",
+    "memory-profiler>=0.61.0",
 ]
 
 [project.scripts]
-llmgine = "src.programs.router:main"
+llmgine = "programs.router:main"
 
 [dependency-groups]
 dev = [

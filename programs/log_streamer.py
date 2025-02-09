@@ -1,7 +1,7 @@
 import re
 import time
 from pathlib import Path
-from src.interfaces.cli import ToolCLI
+from interfaces.cli import ToolCLI
 
 
 class LogStreamer:

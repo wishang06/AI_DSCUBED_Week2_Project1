@@ -1,4 +1,4 @@
-from src.framework.tool_calling import openai_function_wrapper
+from framework.tool_calling import openai_function_wrapper
 import random
 import math
 from typing import List, Dict, Optional

@@ -1,10 +1,8 @@
-from typing import Dict, Callable, List
+from typing import Dict, Callable
 import json
 from pathlib import Path
-from src.framework.clients.model_manager import set_model
-from src.framework.types.clients import ClientType
-from src.framework.types.openrouter_providers import OpenRouterProvider
-from src.framework.clients.model_registry import ModelRegistry
+from framework.types.clients import ClientType
+from framework.clients.model_registry import ModelRegistry
 
 
 class CommandRegistry:
@@ -12,16 +10,16 @@ class CommandRegistry:
         self.chat = chat_instance
         self.model_registry = ModelRegistry()
         self.commands: Dict[str, Callable] = {
-            '/exit': self._handle_exit,
-            '/clear': self._handle_clear,
-            '/help': self._handle_help,
-            '/model': self._handle_model,
-            '/provider': self._handle_provider,
-            '/system': self._handle_system,
-            '/tools': self._handle_tools,
-            '/history': self._handle_history,
-            '/export': self._handle_export,
-            '/load': self._handle_load,
+            "/exit": self._handle_exit,
+            "/clear": self._handle_clear,
+            "/help": self._handle_help,
+            "/model": self._handle_model,
+            "/provider": self._handle_provider,
+            "/system": self._handle_system,
+            "/tools": self._handle_tools,
+            "/history": self._handle_history,
+            "/export": self._handle_export,
+            "/load": self._handle_load,
         }
 
     def handle_command(self, command_input: str) -> bool:
@@ -58,25 +56,23 @@ class CommandRegistry:
             self.chat.cli.print_message(
                 "Available models:\n" + "\n".join(f"- {model}" for model in models),
                 "Models",
-                "cyan"
+                "cyan",
             )
             return
 
         model_name = args[0]
         try:
             # Get model info to validate
-            model_info = self.model_registry.get_model_info(model_name)
+            model_info = self.model_registry.get_model(model_name)
 
             # Use current provider if compatible, otherwise use default
-            current_provider = self.chat.model_request_config.provider
+            current_provider = self.chat.model_request_config.client
             if current_provider not in model_info.allowed_providers:
                 current_provider = model_info.default_provider
 
             # Update model configuration
             self.chat.set_model(
-                model_name,
-                current_provider,
-                model_info.openrouter_providers
+                model_name, current_provider, model_info.openrouter_providers
             )
 
             self.chat.cli.print_success(
@@ -89,13 +85,13 @@ class CommandRegistry:
         """Handle the provider switch command"""
         if not args:
             # List available providers for current model
-            model_info = self.model_registry.get_model_info(self.chat.model)
+            model_info = self.model_registry.get_model(self.chat.model)
             providers = [p.name for p in model_info.allowed_providers]
             self.chat.cli.print_message(
-                f"Available providers for {self.chat.model}:\n" +
-                "\n".join(f"- {provider}" for provider in providers),
+                f"Available providers for {self.chat.model}:\n"
+                + "\n".join(f"- {provider}" for provider in providers),
                 "Providers",
-                "cyan"
+                "cyan",
             )
             return
 
@@ -105,7 +101,7 @@ class CommandRegistry:
             provider = ClientType[provider_name]
 
             # Verify provider is allowed for current model
-            model_info = self.model_registry.get_model_info(self.chat.model)
+            model_info = self.model_registry.get_model(self.chat.model)
             if provider not in model_info.allowed_providers:
                 raise ValueError(
                     f"Provider {provider_name} not supported for model {self.chat.model}"
@@ -130,7 +126,7 @@ class CommandRegistry:
             if not path.exists():
                 self.chat.cli.print_error(f"File not found: {path}")
                 return
-            with open(path, 'r', encoding='utf-8') as f:
+            with open(path, "r", encoding="utf-8") as f:
                 system_prompt = f.read()
             self.chat.engine.store.set_system_prompt(system_prompt)
             self.chat.cli.print_success(f"Loaded system prompt from: {path}")
@@ -139,12 +135,14 @@ class CommandRegistry:
 
     def _handle_tools(self, *args):
         """Handle the tools list command"""
-        if not hasattr(self.chat.engine, 'tool_manager'):
+        if not hasattr(self.chat.engine, "tool_manager"):
             self.chat.cli.print_info("No tools available in current engine mode")
             return
 
         tools = self.chat.engine.tool_manager.tools
-        tool_list = "\n".join([f"- {t.funct.__name__}: {t.function_description}" for t in tools])
+        tool_list = "\n".join(
+            [f"- {t.funct.__name__}: {t.function_description}" for t in tools]
+        )
         self.chat.cli.print_message(f"Available tools:\n\n{tool_list}", "Tools", "cyan")
 
     def _handle_history(self, *args):
@@ -157,9 +155,7 @@ class CommandRegistry:
                 self.chat.cli.print_message(msg.get("content"), "Assistant", "green")
             elif msg.get("role") == "tool":
                 self.chat.cli.print_message(
-                    msg.get("content")[:500],
-                    msg.get("name", "Tool"),
-                    "yellow"
+                    msg.get("content")[:500], msg.get("name", "Tool"), "yellow"
                 )
 
     def _handle_export(self, *args):
@@ -170,7 +166,7 @@ class CommandRegistry:
                 export_path = Path(args[0])
 
             history = self.chat.engine.store.retrieve()
-            with open(export_path, 'w', encoding='utf-8') as f:
+            with open(export_path, "w", encoding="utf-8") as f:
                 json.dump(history, f, indent=2)
 
             self.chat.cli.print_success(f"Chat history exported to: {export_path}")
@@ -188,7 +184,7 @@ class CommandRegistry:
                 self.chat.cli.print_error(f"File not found: {path}")
                 return
 
-            with open(path, 'r', encoding='utf-8') as f:
+            with open(path, "r", encoding="utf-8") as f:
                 history = json.load(f)
 
             self.chat.engine.store.clear()

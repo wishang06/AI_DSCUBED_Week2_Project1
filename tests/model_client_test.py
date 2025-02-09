@@ -1,74 +1,83 @@
-from src.framework.clients.model_manager import set_model, ClientType, ModelRegistry
-from src.framework.utils.runtime import get_global_runtime, init_global_runtime
+from framework.clients.model_manager import ModelManager
+from framework.utils.runtime import init_global_runtime
+from framework.types.clients import ClientType
+from framework.types.models import ModelInstanceRequest
 from rich.console import Console
 from rich.table import Table
-from src.framework.types.clients import ClientType
-import os
 import dotenv
+
 dotenv.load_dotenv()
 
-def test_client_manager():
 
-    # Initialize runtime
+def test_model_manager():
+    # Initialize runtime and model manager
     init_global_runtime()
+    manager = ModelManager()
 
-    # Get all models and their allowed providers from registry
-    registry = ModelRegistry()
+    # Create table
+    table = Table(title="Model Manager Test Results")
+    table.add_column("Model Name", justify="left", style="cyan", no_wrap=True)
+    table.add_column("Requested Provider", justify="left", style="magenta")
+    table.add_column("OpenRouter Provider", justify="left", style="red")
+    table.add_column("Provider Type", justify="left", style="green")
+    table.add_column("Provider Model Name", justify="left", style="yellow")
+    table.add_column("Model Extras", justify="left", style="blue")
+
+    # Get all models from registry
     test_cases = []
+    for model_name in manager.registry.list_models():
+        model_info = manager.registry.get_model(model_name)
 
-    # Generate all possible model-provider combinations
-    for model_name in registry.list_models():
-        model_info = registry.get_model_info(model_name)
-        # Add case with default provider (None)
+        # Add case with default provider
         test_cases.append((model_name, None, None))
+
         # Add cases with each allowed provider
         for provider in model_info.allowed_providers:
             test_cases.append((model_name, provider, None))
-        if ClientType.OPENROUTER in model_info.allowed_providers:
-            # Add cases with each OpenRouter provider
-            if model_info.openrouter_providers:
-                for openrouter_provider in model_info.openrouter_providers:
-                    test_cases.append((model_name, ClientType.OPENROUTER, openrouter_provider))
 
-    # Create table
-    table = Table(title="Model Manager Exhaustive Test Results")
-    table.add_column("Model", justify="left", style="cyan", no_wrap=True)
-    table.add_column("Requested Provider", justify="left", style="magenta")
-    table.add_column("Actual Client Type", justify="left", style="green")
-    table.add_column("Provider Model Name", justify="left", style="yellow")
-    table.add_column("OpenRouter Provider Name", justify="left", style="red")
+            # Add OpenRouter provider cases if applicable
+            if provider == ClientType.OPENROUTER and model_info.openrouter_providers:
+                for or_provider in model_info.openrouter_providers:
+                    test_cases.append((model_name, provider, or_provider))
 
     # Run tests
-    for model_name, provider, openrouter_provider in test_cases:
+    console = Console()
+    for model_name, provider, or_provider in test_cases:
         try:
-            if provider:
-                if provider == ClientType.OPENROUTER:
-                    client, actual_model_name = set_model(model_name, provider, openrouter_provider)
-                else :
-                    client, actual_model_name = set_model(model_name, provider)
-            else:
-                client, actual_model_name = set_model(model_name)
+            # Create model instance request
+            request = ModelInstanceRequest(
+                model_name=model_name,
+                provider=provider,
+                openrouter_provider=or_provider,
+                model_extras={"temperature": 0.7} if provider else None,
+            )
+
+            # Get model instance
+            instance = manager.get_model_instance(request)
+
             table.add_row(
                 model_name,
-                str([model_name, provider, openrouter_provider]),
-                str(client.type),
-                actual_model_name,
-                str(client.provider_model_store) if client.type == ClientType.OPENROUTER else "N/A"
+                str(provider) if provider else "DEFAULT",
+                str(instance.openrouter_provider),
+                str(instance.provider.type),
+                instance.provider_model_name,
+                str(instance.model_extras) if instance.model_extras else "N/A",
             )
+
         except Exception as e:
             table.add_row(
                 model_name,
                 str(provider) if provider else "DEFAULT",
+                str(or_provider) if or_provider else "N/A",
                 "ERROR",
-                str(e)[:50] + "..." if len(str(e)) > 50 else str(e)
+                str(e)[:50] + "..." if len(str(e)) > 50 else str(e),
+                "N/A",
             )
 
     # Print results
-    console = Console()
     console.print("\nTotal test cases:", len(test_cases))
     console.print(table)
-    for client in get_global_runtime().client_list:
-        console.print(client.type)
+
 
 if __name__ == "__main__":
-    test_client_manager()
+    test_model_manager()

@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import Literal, TypeAlias, Dict, Union, Type
 from enum import Enum, auto
-from src.framework.core.engine import ToolEngine, SimpleChatEngine
+from framework.core.engine import ToolEngine, SimpleChatEngine
 
 class EngineType(str, Enum):
     ToolEngine = auto()

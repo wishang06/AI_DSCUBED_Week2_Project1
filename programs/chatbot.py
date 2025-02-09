@@ -5,13 +5,13 @@ from rich.console import Console
 from loguru import logger
 from pydantic import BaseModel
 
-from src.framework.core.engine import ToolEngine
-from src.interfaces.cli import ToolCLI
-from src.framework.clients import ClientOpenAI
+from framework.core.engine import ToolEngine
+from interfaces.cli import ToolCLI
+from framework.clients import ClientOpenAI
 from tools.core.terminal import TerminalOperations
-from src.framework.utils import CLIStatusCallback
+from framework.utils import CLIStatusCallback
 from tools.pwsh import execute_command
-from src.interfaces.cli.observer import CLIObserver
+from interfaces.cli.observer import CLIObserver
 
 # Configure logging
 logger.remove()

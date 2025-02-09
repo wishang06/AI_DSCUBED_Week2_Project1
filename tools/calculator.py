@@ -1,7 +1,7 @@
 import math
 from typing import Union
 from functools import wraps
-from src.framework.tool_calling import openai_function_wrapper
+from framework.tool_calling import openai_function_wrapper
 
 def validate_numbers(*args):
     """Decorator to validate numeric inputs"""

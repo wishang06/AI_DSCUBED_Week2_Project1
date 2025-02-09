@@ -2,8 +2,8 @@ from pydantic import BaseModel
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import List, Optional, Union
-from src.framework.clients.openai_client import ClientOpenAI
-from src.framework.clients.openrouter_client import ClientOpenRouter
+from framework.clients.openai_client import ClientOpenAI
+from framework.clients.openrouter_client import ClientOpenRouter
 
 
 @dataclass

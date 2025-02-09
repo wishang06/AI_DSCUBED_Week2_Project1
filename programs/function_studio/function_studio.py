@@ -18,12 +18,12 @@ from loguru import logger
 from rich.pretty import Pretty
 import textwrap
 
-from src.framework.clients import ClientOpenAI
-from src.framework.core.engine import ToolEngine
-from src.framework.utils import CLIStatusCallback
-from src.interfaces.cli import ToolCLI
-from src.framework.core.observer import Observer
-from src.interfaces.cli.observer import CLIObserver
+from framework.clients import ClientOpenAI
+from framework.core.engine import ToolEngine
+from framework.utils import CLIStatusCallback
+from interfaces.cli import ToolCLI
+from framework.core.observer import Observer
+from interfaces.cli.observer import CLIObserver
 from tools.core.terminal import TerminalOperations
 
 dotenv.load_dotenv()

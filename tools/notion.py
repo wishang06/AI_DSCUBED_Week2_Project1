@@ -1,8 +1,8 @@
 import os
 from typing import Dict, List, Optional
 from notion_client import Client
-import src.framework.clients
-from src.framework.tool_calling import openai_function_wrapper
+import framework.clients
+from framework.tool_calling import openai_function_wrapper
 import dotenv
 import pprint
 import src
@@ -218,8 +218,8 @@ def read_document(document_id: str):
 
 def local():
     """Local testing function"""
-    client = src.ClientOpenAI.create_openai(os.getenv("OPENAI_API_KEY"))
-    engine = src.main.engine.ToolEngine(client, "gpt-4")
+    client = ClientOpenAI.create_openai(os.getenv("OPENAI_API_KEY"))
+    engine = main.engine.ToolEngine(client, "gpt-4")
     
     # Register all tools
     tools = [

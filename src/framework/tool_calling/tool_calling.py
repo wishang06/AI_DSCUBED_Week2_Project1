@@ -7,11 +7,11 @@ from pprint import pformat
 
 from rich.pretty import Pretty
 
-from src.framework.core.observer import EngineSubject
-from src.interfaces.abstract import Interface
-from src.framework.types.events import EngineObserverEventType
+from framework.core.observer import EngineSubject
+from interfaces.abstract import Interface
+from framework.types.events import EngineObserverEventType
 
-from src.framework.types.callbacks import StatusCallback
+from framework.types.callbacks import StatusCallback
 
 # ====== Function Calling Decorator ======
 
