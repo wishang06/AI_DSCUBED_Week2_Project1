@@ -6,14 +6,20 @@ the observability bus and the message bus.
 
 import asyncio
 import logging
+import sys  # Added for logging setup
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, Generic, List, Optional, Type, TypeVar
 
-from llmgine.bus import MessageBus
+from llmgine.bus.bus import MessageBus
+from llmgine.bus.session import BusSession
 from llmgine.messages.commands import Command
 from llmgine.messages.events import Event
-from llmgine.observability.bus import ObservabilityBus
-from llmgine.observability.events import LogLevel
+from llmgine.observability.events import LogLevel, ObservabilityBaseEvent
+from llmgine.observability.handlers import (
+    ConsoleEventHandler,
+    FileEventHandler,
+    ObservabilityEventHandler,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -21,163 +27,229 @@ logger = logging.getLogger(__name__)
 TConfig = TypeVar("TConfig")
 
 
+# --- Basic Logging Setup Function ---
+def setup_basic_logging(level: LogLevel = LogLevel.INFO):
+    """Configure basic Python logging to the console."""
+    log_level_map = {
+        LogLevel.DEBUG: logging.DEBUG,
+        LogLevel.INFO: logging.INFO,
+        LogLevel.WARNING: logging.WARNING,
+        LogLevel.ERROR: logging.ERROR,
+        LogLevel.CRITICAL: logging.CRITICAL,
+    }
+    logging_level = log_level_map.get(level, logging.INFO)
+
+    # Configure logging with session_id support
+    logging.basicConfig(
+        level=logging_level,
+        format="%(asctime)s - %(name)s - %(levelname)s - [%(session_id)s] %(message)s",
+        # stream=sys.stdout # Optionally direct to stdout instead of stderr
+    )
+
+    # Add a default filter that adds session_id if not present
+    class SessionFilter(logging.Filter):
+        def filter(self, record):
+            if not hasattr(record, "session_id"):
+                record.session_id = "global"
+            return True
+
+    # Add the filter to the root logger
+    root_logger = logging.getLogger()
+    root_logger.addFilter(SessionFilter())
+
+    logger.info(f"Basic logging configured with level {logging_level}")
+
+
 @dataclass
 class ApplicationConfig:
     """Base configuration for applications."""
-    
+
     # General application config
-    system_prompt: Optional[str] = None
-    
-    # Logging configuration
+    name: str = "application"
+    description: str = "application description"
+
+    # --- Standard Logging Config ---
+    # Controls standard Python logging setup (not MessageBus handlers)
     log_level: LogLevel = LogLevel.INFO
-    log_dir: str = "logs"
-    
-    # Advanced logging options
-    console_logging: bool = True
-    file_logging: bool = True
-    json_logging: bool = True
-    
-    # Metrics configuration
-    metrics_enabled: bool = True
-    metrics_interval: int = 60  # seconds
-    
-    # Tracing configuration
-    tracing_enabled: bool = True
-    
-    # Custom handlers
-    custom_log_handlers: List[Any] = field(default_factory=list)
-    custom_metric_handlers: List[Any] = field(default_factory=list)
-    custom_trace_handlers: List[Any] = field(default_factory=list)
+
+    # --- Observability Handler Config ---
+    enable_console_handler: bool = True
+    enable_file_handler: bool = True
+    file_handler_log_dir: str = "logs"
+    file_handler_log_filename: Optional[str] = None  # Default: timestamped events.jsonl
+    # custom_handlers: List[ObservabilityEventHandler] = field(default_factory=list) # For adding other handlers
+
+    # --- Tracing Config ---
+    enable_tracing: bool = True  # Default to enabled
+
+    # --- Removed old MessageBus specific flags ---
+    # log_dir: str = "logs"
+    # log_filename: Optional[str] = None
+    # enable_console_metrics: bool = True
+    # metrics_interval: int = 60
+    # enable_console_traces: bool = True
 
 
 class ApplicationBootstrap(Generic[TConfig]):
     """Bootstrap for application initialization.
-    
-    Handles setting up the observability and message buses and 
-    connecting all components.
+
+    Handles setting up the message bus and registering configured
+    observability event handlers.
     """
 
     def __init__(self, config: TConfig = None):
         """Initialize the bootstrap.
-        
+
         Args:
             config: Application configuration
         """
         self.config = config or ApplicationConfig()
-        
-        # Initialize the observability bus first
-        self.obs_bus = ObservabilityBus(
-            log_dir=getattr(self.config, "log_dir", "logs")
-        )
-        
-        # Initialize the message bus with reference to the observability bus
-        self.message_bus = MessageBus(obs_bus=self.obs_bus)
-        
+
+        # --- Configure Standard Logging ---
+        # Get log level from config, default to INFO
+        log_level_config = getattr(self.config, "log_level", LogLevel.INFO)
+        setup_basic_logging(level=log_level_config)
+        # --- End Logging Config ---
+
+        # --- Initialize MessageBus (now takes no args) ---
+        self.message_bus = MessageBus()
+
+        # --- Configure Tracing based on Config ---
+        if not getattr(self.config, "enable_tracing", True):
+            self.message_bus.disable_tracing()
+            logger.info("MessageBus tracing disabled via configuration.")
+
+        # --- Create a primary session for this bootstrap ---
+        self.primary_session = self.message_bus.create_session()
+
+        # --- Instantiate and Register Handlers based on Config ---
+        self._register_observability_handlers()
+
+    def _register_observability_handlers(self) -> None:
+        """Instantiate and register observability handlers based on config."""
+
+        console_handler = None
+        file_handler = None
+
+        # Standard Console Handler
+        if getattr(self.config, "enable_console_handler", True):
+            console_handler = ConsoleEventHandler()
+            logger.info("ConsoleEventHandler enabled.")
+
+        # Standard File Handler
+        if getattr(self.config, "enable_file_handler", True):
+            log_dir = getattr(self.config, "file_handler_log_dir", "logs")
+            log_filename = getattr(self.config, "file_handler_log_filename", None)
+            file_handler = FileEventHandler(log_dir=log_dir, filename=log_filename)
+            logger.info(
+                f"FileEventHandler enabled (dir={log_dir}, file={log_filename or 'timestamped'})."
+            )
+
+        # Custom Handlers registration would go here
+
+        # Register Console Handler for BaseEvent (to see original obs events)
+        if console_handler:
+            logger.info("Registering ConsoleEventHandler for BaseEvent.")
+            # Use the global session for observability handlers
+            self.message_bus.register_event_handler(
+                "global", ObservabilityBaseEvent, console_handler.handle
+            )
+
+        # Register File Handler for EventLogWrapper (to log wrapped events)
+        if file_handler:
+            # Import EventLogWrapper here locally to avoid circular dependency if BaseEvent wasn't sufficient
+            from llmgine.observability.events import EventLogWrapper
+
+            logger.info("Registering FileEventHandler for EventLogWrapper.")
+            # Use the global session for observability handlers
+            self.message_bus.register_event_handler(
+                "global", EventLogWrapper, file_handler.handle
+            )
+
+        if not console_handler and not file_handler:
+            logger.warning(
+                "No standard observability handlers were configured or registered."
+            )
+
     async def bootstrap(self) -> None:
         """Bootstrap the application.
-        
-        Starts the observability bus and message bus, and registers handlers.
+
+        Starts the message bus, and registers handlers.
         """
-        # Start observability bus first
-        await self.obs_bus.start()
-        self.obs_bus.log(
-            LogLevel.INFO, 
-            "Application bootstrap started",
-            {"component": "ApplicationBootstrap"}
+        logger.info(
+            "Application bootstrap started", extra={"component": "ApplicationBootstrap"}
         )
-        
-        # Configure advanced observability options
-        self._configure_observability()
-        
+
         # Start message bus
         await self.message_bus.start()
-        
+
         # Register command and event handlers
         self._register_command_handlers()
         self._register_event_handlers()
-        
-        self.obs_bus.log(
-            LogLevel.INFO, 
-            "Application bootstrap completed",
-            {"component": "ApplicationBootstrap"}
+
+        logger.info(
+            "Application bootstrap completed", extra={"component": "ApplicationBootstrap"}
         )
 
     async def shutdown(self) -> None:
         """Shutdown the application components."""
-        # Stop message bus first
+        # Close the primary session (using __aexit__ since it's an async context manager)
+        if hasattr(self, "primary_session") and self.primary_session._active:
+            await self.primary_session.__aexit__(None, None, None)
+
+        # Stop message bus
         await self.message_bus.stop()
-        
-        # Then stop observability bus
-        await self.obs_bus.stop()
-        
-        self.obs_bus.log(
-            LogLevel.INFO, 
-            "Application shutdown complete",
-            {"component": "ApplicationBootstrap"}
+
+        logger.info(
+            "Application shutdown complete", extra={"component": "ApplicationBootstrap"}
         )
 
-    def _configure_observability(self) -> None:
-        """Configure observability based on configuration."""
-        # Configure custom handlers if provided
-        if hasattr(self.config, "custom_log_handlers"):
-            for handler in getattr(self.config, "custom_log_handlers", []):
-                self.obs_bus.register_event_handler(
-                    handler.event_type, handler.handler
-                )
-        
-        if hasattr(self.config, "custom_metric_handlers"):
-            for handler in getattr(self.config, "custom_metric_handlers", []):
-                self.obs_bus.register_event_handler(
-                    handler.event_type, handler.handler
-                )
-                
-        if hasattr(self.config, "custom_trace_handlers"):
-            for handler in getattr(self.config, "custom_trace_handlers", []):
-                self.obs_bus.register_event_handler(
-                    handler.event_type, handler.handler
-                )
-    
     def _register_command_handlers(self) -> None:
         """Register command handlers with the message bus.
-        
+
         Override this method to register your engine's command handlers.
         """
         pass
-        
+
     def _register_event_handlers(self) -> None:
         """Register event handlers with the message bus.
-        
+
         Override this method to register your engine's event handlers.
         """
         pass
-        
-    def register_command_handler(self, command_type: Type[Command], 
-                              handler: Callable) -> None:
+
+    def register_command_handler(
+        self, command_type: Type[Command], handler: Callable
+    ) -> None:
         """Register a command handler with the message bus.
-        
+
         Args:
             command_type: The type of command to handle
             handler: The function that handles the command
         """
-        if asyncio.iscoroutinefunction(handler):
-            self.message_bus.register_async_command_handler(command_type, handler)
-        else:
-            self.message_bus.register_command_handler(command_type, handler)
+        # Use the primary session as the default
+        self.primary_session.register_command_handler(command_type, handler)
 
-    def register_event_handler(self, event_type: Type[Event],
-                            handler: Callable) -> None:
+    def register_event_handler(self, event_type: Type[Event], handler: Callable) -> None:
         """Register an event handler with the message bus.
-        
+
         Args:
             event_type: The type of event to handle
             handler: The function that handles the event
         """
-        if asyncio.iscoroutinefunction(handler):
-            self.message_bus.register_async_event_handler(event_type, handler)
-        else:
-            self.message_bus.register_event_handler(event_type, handler)
-            
+        # Use the primary session as the default
+        self.primary_session.register_event_handler(event_type, handler)
+
+    def create_session(self) -> BusSession:
+        """Create a new session for session-specific handlers.
+
+        Returns:
+            A new BusSession that can be used as a context manager
+        """
+        return self.message_bus.create_session()
+
 
 class CommandBootstrap(ApplicationBootstrap[TConfig]):
     """Legacy bootstrap class for backward compatibility."""
+
     pass
