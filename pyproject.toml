@@ -16,6 +16,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
+    "anthropic>=0.50.0",
     "discord>=2.3.2",
     "icecream>=2.1.4",
     "ipdb>=0.13.13",
