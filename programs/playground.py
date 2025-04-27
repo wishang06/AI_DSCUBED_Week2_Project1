@@ -1,21 +1,34 @@
-import openai
-import os
-import dotenv
-import pprint as pp
-import logging
+import asyncio
+from rich.console import Console
+from rich.live import Live
+from rich.spinner import Spinner
+from rich.align import Align
+from rich.panel import Panel
+from rich.text import Text
+from prompt_toolkit import HTML, PromptSession
+from llmgine.ui.cli.config import CLIConfig
+from rich import print
 
-dotenv.load_dotenv()
+console = Console()
 
-logging.basicConfig(level=logging.DEBUG)
 
-client = openai.OpenAI(
-    api_key=os.getenv("OPENAI_API_KEY"), base_url=os.getenv("OPENAI_BASE_URL")
-)
+async def main():
+    while True:
+        print(
+            Panel(
+                "hello",
+                title="[bold yellow]Prompt[/bold yellow]",
+                subtitle="[yellow]Type your message... (y/n)[/yellow]",
+                title_align="left",
+                width=CLIConfig().max_width,
+                style="yellow",
+                padding=CLIConfig().padding,
+            )
+        )
+        user_input = await PromptSession().prompt_async(
+            HTML("  ❯ "),
+        )
+        print(user_input)
 
-response = client.chat.completions.create(
-    model="gpt-4o-mini",
-    messages=[{"role": "user", "content": "Hello, how are you?"}],
-    temperature=None,
-)
 
-pp.pprint(response.model_dump())
+asyncio.run(main())

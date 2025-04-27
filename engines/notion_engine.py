@@ -9,7 +9,7 @@ from llmgine.llm.providers.response import OpenAIManager
 from llmgine.llm.tools.tool_manager import ToolManager
 from llmgine.llm.tools.types import ToolCall
 from llmgine.messages.commands import Command, CommandResult
-from llmgine.messages.events import LLMResponse, Event
+from llmgine.messages.events import ToolCall, LLMResponse, Event
 from dataclasses import dataclass, field
 
 
@@ -29,13 +29,14 @@ class ToolEnginePromptResponseEvent(Event):
     tool_calls: Optional[List[ToolCall]] = None
 
 
-class ToolEngine:
+class NotionEngine:
     def __init__(
         self,
         session_id: str,
         api_key: Optional[str] = None,
         model: str = "gpt-4o-mini",
         system_prompt: Optional[str] = None,
+        confirmation: bool = False,
     ):
         """Initialize the LLM engine.
 
@@ -51,7 +52,7 @@ class ToolEngine:
         self.engine_id = str(uuid.uuid4())
         self.session_id = session_id
         self.model = model
-
+        self.confirmation = confirmation
         # Get API key from environment if not provided
         self.api_key = api_key or os.environ.get("OPENAI_API_KEY")
         if not self.api_key:
@@ -97,7 +98,7 @@ class ToolEngine:
             # Loop for potential tool execution cycles
             while True:
                 # 2. Get current context (including latest user message or tool results)
-                current_context = await self.context_manager.retrieve()
+                current_context = self.context_manager.retrieve()
 
                 # 3. Get available tools
                 tools = await self.tool_manager.get_tools()
@@ -113,7 +114,7 @@ class ToolEngine:
 
                 # 6. Add the *entire* assistant message object to history.
                 # This is crucial for context if it contains tool_calls.
-                await self.context_manager.store_assistant_message(response_message)
+                self.context_manager.store_assistant_message(response_message)
 
                 # 7. Check for tool calls
                 if not response_message.tool_calls:
@@ -163,13 +164,13 @@ class ToolEngine:
         except Exception as e:
             return CommandResult(success=False, original_command=command, error=str(e))
 
-    async def register_tool(self, function: Callable):
+    async def register_tools(self, platform_list: List[str]):
         """Register a function as a tool.
 
         Args:
             function: The function to register as a tool
         """
-        await self.tool_manager.register_tool(function)
+        await self.tool_manager.register_tools(platform_list)
 
     async def process_message(self, message: str) -> str:
         """Process a user message and return the response.
@@ -184,7 +185,7 @@ class ToolEngine:
         result = await self.message_bus.execute(command)
 
         if not result.success:
-            raise RuntimeError(f"Failed to process message: {result.error}")
+            return result.error
 
         return result.result
 
