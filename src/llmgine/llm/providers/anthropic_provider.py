@@ -3,6 +3,7 @@
 from typing import Any, Dict, List, Literal, Optional, Union
 import uuid
 
+from llmgine.bootstrap import ApplicationConfig
 from llmgine.llm.providers.events import LLMCallEvent, LLMResponseEvent
 from llmgine.llm.providers.providers import Providers
 from openai import AsyncOpenAI
@@ -26,7 +27,7 @@ class AnthropicResponse(LLMResponse):
 
     @property
     def content(self) -> str:
-        return self.response.choices[0].message.content
+        return self.response.content[0].text
 
     @property
     def tool_calls(self) -> List[ToolCall]:
@@ -62,7 +63,7 @@ class AnthropicProvider(LLMProvider):
     ) -> None:
         self.model = model
         self.model_component_id = model_component_id
-        self.base_url = AsyncAnthropic(api_key=api_key)
+        self.client = AsyncAnthropic(api_key=api_key)
         self.bus = MessageBus()
 
     async def generate(
@@ -90,10 +91,8 @@ class AnthropicProvider(LLMProvider):
 
         # System prompt extract
         if messages[0]["role"] == "system":
-            system_prompt = messages[0]["content"]
+            payload["system"] = messages[0]["content"]
             payload["messages"] = messages[1:]
-        else:
-            system_prompt = None
 
         if temperature:
             payload["temperature"] = temperature
@@ -125,7 +124,7 @@ class AnthropicProvider(LLMProvider):
         )
         await self.bus.publish(call_event)
         try:
-            response = await self.client.chat.completions.create(**payload)
+            response = await self.client.messages.create(**payload)
         except Exception as e:
             await self.bus.publish(
                 LLMResponseEvent(
@@ -149,12 +148,17 @@ class AnthropicProvider(LLMProvider):
         # TODO: Implement streaming
         raise NotImplementedError("Streaming is not supported for OpenAI")
 
-def main():
+async def main():
     import dotenv
+    import os
+    from llmgine.bootstrap import ApplicationBootstrap
     dotenv.load_dotenv(override=True)
+    app = ApplicationBootstrap(ApplicationConfig(enable_console_handler=False))
+    await app.bootstrap()
     provider = AnthropicProvider(api_key=os.getenv("ANTHROPIC_API_KEY"), model="claude-3-5-sonnet-20240620")
-    response = provider.generate(messages=[{"role": "system", "content": "Respond in pirate language"}, {"role": "user", "content": "Hello, how are you?"}])
-    print(response)
+    response = await provider.generate(messages=[{"role": "system", "content": "Respond in pirate language"}, {"role": "user", "content": "Hello, how are you?"}])
+    print(response.content)
 
 if __name__ == "__main__":
-    main()
+    import asyncio
+    asyncio.run(main())
