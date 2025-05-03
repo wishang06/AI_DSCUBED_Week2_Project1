@@ -1,4 +1,6 @@
 docs/source
+.aider*
+.DS_store
 
 # From https://raw.githubusercontent.com/github/gitignore/main/Python.gitignore
 
