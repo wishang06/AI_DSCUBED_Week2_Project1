@@ -1,10 +1,7 @@
-import asyncio
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Union
+from typing import Any, Dict, List, Union
 
-# Type for tool function
-ToolFunction = Callable[..., Any]
-AsyncToolFunction = Callable[..., "asyncio.Future[Any]"]
+from llmgine.llm.tools.types import AsyncToolFunction, ToolFunction
 
 
 @dataclass
