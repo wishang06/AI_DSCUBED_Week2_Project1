@@ -4,11 +4,9 @@ Provides a way to bootstrap the application components including
 the observability bus and the message bus.
 """
 
-import asyncio
 import logging
-import sys  # Added for logging setup
-from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, Generic, List, Optional, Type, TypeVar
+from dataclasses import dataclass
+from typing import Callable, Generic, Optional, Type, TypeVar
 
 from llmgine.bus.bus import MessageBus
 from llmgine.bus.session import BusSession
