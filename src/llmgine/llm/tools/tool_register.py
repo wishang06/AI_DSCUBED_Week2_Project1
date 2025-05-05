@@ -4,16 +4,17 @@ import inspect
 import logging
 import os
 import re
-from typing import Any, Dict, List, Tuple, Type
+from typing import Dict, List, Tuple, Type, Union
 
-from llmgine.llm.tools.tool import Parameter, Tool
-from llmgine.llm.tools.types import AsyncOrSyncToolFunction
+from llmgine.llm.tools.tool import AsyncToolFunction, Parameter, Tool, ToolFunction
 
 logger = logging.getLogger(__name__)
 
 
 class ToolRegister:
-    def register_tool(self, function: AsyncOrSyncToolFunction) -> Tuple[str, Tool]:
+    def register_tool(
+        self, function: Union[ToolFunction, AsyncToolFunction]
+    ) -> Tuple[str, Tool]:
         """Register a function as a tool.
 
         Args:
@@ -29,7 +30,7 @@ class ToolRegister:
         parameters = self._get_function_parameters(function)
         is_async = asyncio.iscoroutinefunction(function)
 
-        tool: Tool = Tool(
+        tool = Tool(
             name=name,
             description=description,
             parameters=parameters,
@@ -37,7 +38,7 @@ class ToolRegister:
             is_async=is_async,
         )
 
-        return name, tool  # TODO can't we just return the tool?
+        return name, tool
 
     def register_tools(self, platform_list: List[str]) -> Dict[str, Tool]:
         """Register all relevant tools for a list of platforms. Completely independent from register_tool.
@@ -46,15 +47,16 @@ class ToolRegister:
             platform_list: A list of platform names
         """
 
-        tools: Dict[str, Tool] = {}
+        tools = {}
         for platform in platform_list:
             for function in self._get_functions_for_platform(platform):
                 name, tool = self.register_tool(function)
                 tools[name] = tool
-
         return tools
 
-    def _get_functions_for_platform(self, platform: str) -> List[AsyncOrSyncToolFunction]:
+    def _get_functions_for_platform(
+        self, platform: str
+    ) -> List[Union[ToolFunction, AsyncToolFunction]]:
         """Get all functions for a specific platform.
         The functions for 'platform' are stored in the folder 'platform_tools' with the file name '{platform.lower()}_tools.py',
         and in a variable called '{platform.upper()}_TOOLS'.
@@ -65,7 +67,7 @@ class ToolRegister:
         Returns:
             List of tool functions for the platform
         """
-        functions: List[AsyncOrSyncToolFunction] = []
+        functions = []
         platform_tools_dir = os.path.join(os.path.dirname(__file__), "platform_tools")
 
         # Check directory for platform-specific files
@@ -90,7 +92,9 @@ class ToolRegister:
 
         return functions
 
-    def _get_function_description(self, function: AsyncOrSyncToolFunction) -> str:
+    def _get_function_description(
+        self, function: Union[ToolFunction, AsyncToolFunction]
+    ) -> str:
         """Get the description of a function.
 
         Args:
@@ -116,7 +120,7 @@ class ToolRegister:
         return description
 
     def _get_function_parameters(
-        self, function: AsyncOrSyncToolFunction
+        self, function: Union[ToolFunction, AsyncToolFunction]
     ) -> List[Parameter]:
         """Get the parameters of a function.
 
@@ -129,8 +133,6 @@ class ToolRegister:
         Raises:
             ValueError: If the function has no parameters
         """
-
-        param_desc: str
 
         # Extract parameters from function signature
         sig = inspect.signature(function)
@@ -171,7 +173,6 @@ class ToolRegister:
             # If the parameter has a description in the Args section, use it
             if param_name in param_dict:
                 param_desc = param_dict[param_name]
-
             else:
                 raise ValueError(
                     f"Parameter '{param_name}' has no description in the Args section"
@@ -188,7 +189,7 @@ class ToolRegister:
 
         return parameters
 
-    def _annotation_to_json_type(self, annotation: Type[Any]) -> str:
+    def _annotation_to_json_type(self, annotation: Type) -> str:
         """Convert a Python type annotation to a JSON schema type.
 
         Args:
