@@ -22,7 +22,7 @@ from llmgine.llm.tools.tool_parser import (
     ToolParser,
 )
 from llmgine.llm.tools.tool_register import ToolRegister
-from llmgine.llm.tools.types import AsyncOrSyncToolFunction
+from llmgine.llm.tools.types import AsyncOrSyncToolFunction, ToolCall
 
 
 class ToolManager:
@@ -106,7 +106,7 @@ class ToolManager:
 
         return [self.__tool_parser.parse_tool(tool) for tool in tools]
 
-    async def execute_tool_call(self, tool_call: ToolCall) -> Any:
+    async def execute_tool_call(self, tool_call: ToolCall) -> Optional[dict[str, Any]]:
         """Execute a tool from a ToolCall object.
 
         Args:
