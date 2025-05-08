@@ -1,24 +1,15 @@
-from abc import ABC, abstractmethod
 import asyncio
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
-import dataclasses
-from operator import truediv
-from typing import Optional, Type
+from typing import TYPE_CHECKING, Optional
+
 from prompt_toolkit import HTML, PromptSession
-import rich
-from rich.panel import Panel
-from rich.console import Console
-from rich.box import ROUNDED
 from rich import print
-from llmgine.bus.bus import MessageBus
+from rich.panel import Panel
+from rich.prompt import Confirm
+
 from llmgine.messages.commands import Command, CommandResult
 from llmgine.messages.events import Event
-from rich.spinner import Spinner
-from rich.live import Live
-from rich.prompt import Prompt
-from rich.prompt import Confirm
-from typing import TYPE_CHECKING
-
 from llmgine.ui.cli.config import CLIConfig
 
 if TYPE_CHECKING:
@@ -199,11 +190,12 @@ class UserGeneralInput(CLIPrompt):
         return cls(UserGeneralInputCommand(prompt=prompt), cli=cli)
 
     def __init__(self, command: Command, cli: "EngineCLI"):
-        self.session = PromptSession()
+        self.session: PromptSession = PromptSession()
         self.prompt = command.prompt
         self.result = None
         self.cli = cli
 
+    # TODO types
     async def get_input(self):
         print(
             Panel(

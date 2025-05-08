@@ -8,9 +8,7 @@ import asyncio
 import contextvars
 import logging
 import traceback
-from dataclasses import asdict
-from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Type, TypeVar, cast
+from typing import Any, Callable, Dict, List, Optional, Type, TypeVar
 
 # Import only what's needed at the module level and use local imports for the rest
 # to avoid circular dependencies
@@ -166,7 +164,7 @@ class MessageBus:
     def register_command_handler(
         self,
         command_type: Type[TCommand],
-        handler: CommandHandler,
+        handler: CommandHandler[Any],
         session_id: str = "ROOT",
     ) -> None:
         """
@@ -331,7 +329,7 @@ class MessageBus:
             failed_result = CommandResult(
                 success=False,
                 command_id=command.command_id,
-                error=f"{type(e).__name__}: {str(e)}",
+                error=f"{type(e).__name__}: {e!s}",
                 metadata={"exception_details": traceback.format_exc()},
             )
             await self.publish(CommandResultEvent(command_result=failed_result))
