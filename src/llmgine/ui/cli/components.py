@@ -274,6 +274,44 @@ class YesNoPrompt(CLIPrompt):
     def attach_cli(self, cli: "EngineCLI"):
         self.cli = None
 
+@dataclass
+class SelectPromptCommand(Command):
+    prompt: str = ""
+    option_number: int = 0
+    title: str = ""
+
+class SelectPrompt(CLIPrompt):
+    """
+    Command must have property prompt and list.
+    """
+
+    def __init__(self, command: Command):
+        self.title = command.title
+        self.prompt = command.prompt
+    
+    async def get_input(self):
+        print(
+            Panel(
+                self.prompt,
+                title=f"[bold green]{self.title}[/bold green]",
+                subtitle=f"[green]Input a number...[/green]",
+                title_align="left",
+                width=CLIConfig().max_width,
+                style="green",
+                padding=CLIConfig().padding,
+            )
+        )
+        while True:
+            user_input = IntPrompt.ask()
+            return user_input
+
+    @property
+    def component(self):
+        return None
+
+    def attach_cli(self, cli: "EngineCLI"):
+        self.cli = None
+
 
 async def main():
     # UserComponent(UserComponentEvent(text="Hello, world!")).render()
