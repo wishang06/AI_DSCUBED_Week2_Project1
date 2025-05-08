@@ -66,11 +66,11 @@ class EngineCLI:
     def register_engine(self, engine: Any):
         self.engine = engine
 
-    def register_engine_command(self, command: Type[Command], engine_input: Callable):
+
+    def register_engine_command(self, command: Type[Command], engine_function: Callable):
         self.engine_command = command
-        self.bus.register_command_handler(
-            command, engine_input, self.session_id
-        )
+        self.bus.register_command_handler(command, engine_function, self.session_id)
+
 
     def register_engine_result_component(self, component: Type[CLIComponent]):
         self.engine_result_component = component
