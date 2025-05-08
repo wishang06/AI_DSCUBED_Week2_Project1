@@ -7,24 +7,32 @@ from llmgine.messages.commands import Command, CommandResult
 from llmgine.bus.bus import MessageBus
 from llmgine.messages.events import Event
 
+<<<<<<< HEAD
+=======
 
+>>>>>>> origin/main
 @dataclass
 class SinglePassEngineCommand(Command):
     prompt: str = ""
 
+<<<<<<< HEAD
+=======
 
+>>>>>>> origin/main
 @dataclass
 class SinglePassEngineStatusEvent(Event):
     status: str = ""
 
 
 class SinglePassEngine(Engine):
+
     def __init__(
-        self,
-        model: Model,
-        system_prompt: Optional[str] = None,
-        session_id: Optional[str] = None,
-    ):
+          self,
+          model: Model, 
+          system_prompt: Optional[str] = None, 
+          session_id: Optional[str] = None
+    ) :
+
         self.model = model
         self.system_prompt = system_prompt
         self.session_id = session_id
@@ -36,6 +44,7 @@ class SinglePassEngine(Engine):
             return CommandResult(success=True, result=result)
         except Exception as e:
             return CommandResult(success=False, error=str(e))
+        
 
     async def execute(self, prompt: str) -> str:
         if self.system_prompt:
@@ -58,6 +67,7 @@ class SinglePassEngine(Engine):
 async def use_single_pass_engine(
     prompt: str, model: Model, system_prompt: Optional[str] = None
 ):
+
     session_id = str(uuid.uuid4())
     engine = SinglePassEngine(model, system_prompt, session_id)
     return await engine.execute(prompt)
@@ -94,3 +104,4 @@ if __name__ == "__main__":
     import asyncio
 
     asyncio.run(main(1))
+

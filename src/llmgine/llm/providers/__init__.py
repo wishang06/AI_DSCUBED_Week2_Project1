@@ -4,12 +4,17 @@ This module defines the core LLM provider protocol and manager interfaces,
 as well as concrete implementations.
 """
 
+import uuid
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Protocol
-import uuid
 
 from llmgine.llm.providers.response import LLMResponse
-from llmgine.llm.tools.types import ToolCall
+from llmgine.llm.tools.types import (
+    ContextType,
+    ModelFormattedDictTool,
+    ModelNameStr,
+    ToolCall,
+)
 
 
 class LLMProvider(Protocol):
@@ -19,13 +24,12 @@ class LLMProvider(Protocol):
     async def generate(
         self,
         prompt: str,
-        context: Optional[List[Dict[str, Any]]] = None,
+        context: Optional[ContextType] = None,
         system_prompt: Optional[str] = None,
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None,
-        model: Optional[str] = None,
-        tools: Optional[List[Dict[str, Any]]] = None,
-        **kwargs,
+        model: Optional[ModelNameStr] = None,
+        tools: Optional[List[ModelFormattedDictTool]] = None,
     ) -> LLMResponse:
         """Generate a response from the LLM.
 
@@ -53,13 +57,12 @@ class LLMManager(ABC):
         self,
         prompt: str,
         provider_id: Optional[str] = None,
-        context: Optional[List[Dict[str, Any]]] = None,
+        context: Optional[ContextType] = None,
         system_prompt: Optional[str] = None,
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None,
-        model: Optional[str] = None,
-        tools: Optional[List[Dict[str, Any]]] = None,
-        **kwargs,
+        model: Optional[ModelNameStr] = None,
+        tools: Optional[List[ModelFormattedDictTool]] = None,
     ) -> LLMResponse:
         """Generate a response from an LLM provider.
 
@@ -133,13 +136,12 @@ class DefaultLLMManager(LLMManager):
         self,
         prompt: str,
         provider_id: Optional[str] = None,
-        context: Optional[List[Dict[str, Any]]] = None,
+        context: Optional[ContextType] = None,
         system_prompt: Optional[str] = None,
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None,
-        model: Optional[str] = None,
-        tools: Optional[List[Dict[str, Any]]] = None,
-        **kwargs,
+        model: Optional[ModelNameStr] = None,
+        tools: Optional[List[ModelFormattedDictTool]] = None,
     ) -> LLMResponse:
         """Generate a response from an LLM provider.
 
@@ -170,7 +172,6 @@ class DefaultLLMManager(LLMManager):
             max_tokens=max_tokens,
             model=model,
             tools=tools,
-            **kwargs,
         )
 
     def register_provider(self, provider_id: str, provider: LLMProvider) -> None:
