@@ -1,11 +1,14 @@
 import asyncio
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Union
+from typing import Any, Callable, Dict, NewType, Union
 
 # Type for tool function
 ToolFunction = Callable[..., Any]
 AsyncToolFunction = Callable[..., "asyncio.Future[Any]"]
 AsyncOrSyncToolFunction = Union[ToolFunction, AsyncToolFunction]
+
+
+model_formatted_tool = NewType("model_formatted_tool", dict[str, Any])
 
 
 # TODO this is a class not really a type probably put into seperate file

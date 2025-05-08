@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List
 
 from llmgine.llm.tools.types import AsyncOrSyncToolFunction
 
