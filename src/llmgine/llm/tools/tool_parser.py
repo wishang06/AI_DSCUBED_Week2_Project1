@@ -5,22 +5,37 @@ any LLM.
 """
 
 from abc import abstractmethod
-from typing import Any, Dict
+from typing import Any
 
 from llmgine.llm.tools.tool import Tool
+from llmgine.llm.tools.types import ModelFormattedDictTool
 
 
 class ToolParser:
     @abstractmethod
-    def parse_tool(self, tool: Tool) -> Dict[str, Any]:
+    def parse_tool(self, tool: Tool) -> ModelFormattedDictTool:
         """Parse a tool into a format that can be used by any LLM."""
         pass
+
+
+def create_required_and_properties(tool: Tool) -> tuple[list[str], dict[str, Any]]:
+    required: list[str] = []
+    properties: dict[str, Any] = {}
+    for param in tool.parameters:
+        properties[param.name] = {
+            "type": param.type,
+            "description": param.description,
+        }
+        if param.required:
+            required.append(param.name)
+
+    return required, properties
 
 
 class OpenAIToolParser(ToolParser):
     """A parser for tools that can be used by OpenAI."""
 
-    def parse_tool(self, tool: Tool) -> Dict[str, Any]:
+    def parse_tool(self, tool: Tool) -> ModelFormattedDictTool:
         """Parse a tool into a format that can be used by OpenAI.
 
         Args:
@@ -31,17 +46,9 @@ class OpenAIToolParser(ToolParser):
         """
 
         # parameters that are required
-        required = []
-        properties = {}
-        for param in tool.parameters:
-            properties[param.name] = {
-                "type": param.type,
-                "description": param.description,
-            }
-            if param.required:
-                required.append(param.name)
+        required, properties = create_required_and_properties(tool)
 
-        return {
+        return ModelFormattedDictTool({
             "type": "function",
             "function": {
                 "name": tool.name,
@@ -52,13 +59,13 @@ class OpenAIToolParser(ToolParser):
                     "required": required,
                 },
             },
-        }
+        })
 
 
 class ClaudeToolParser(ToolParser):
     """A parser for tools that can be used by Claude."""
 
-    def parse_tool(self, tool: Tool) -> Dict[str, Any]:
+    def parse_tool(self, tool: Tool) -> ModelFormattedDictTool:
         """Parse a tool into a format that can be used by Claude.
 
         Args:
@@ -69,17 +76,9 @@ class ClaudeToolParser(ToolParser):
         """
 
         # parameters that are required
-        required = []
-        properties = {}
-        for param in tool.parameters:
-            properties[param.name] = {
-                "type": param.type,
-                "description": param.description,
-            }
-            if param.required:
-                required.append(param.name)
+        required, properties = create_required_and_properties(tool)
 
-        return {
+        return ModelFormattedDictTool({
             "type": "function",
             "function": {
                 "name": tool.name,
@@ -90,13 +89,13 @@ class ClaudeToolParser(ToolParser):
                     "required": required,
                 },
             },
-        }
+        })
 
 
 class DeepSeekToolParser(ToolParser):
     """A parser for tools that can be used by DeepSeek."""
 
-    def parse_tool(self, tool: Tool) -> Dict[str, Any]:
+    def parse_tool(self, tool: Tool) -> ModelFormattedDictTool:
         """Parse a tool into a format that can be used by DeepSeek.
 
         Args:
@@ -107,17 +106,9 @@ class DeepSeekToolParser(ToolParser):
         """
 
         # parameters that are required
-        required = []
-        properties = {}
-        for param in tool.parameters:
-            properties[param.name] = {
-                "type": param.type,
-                "description": param.description,
-            }
-            if param.required:
-                required.append(param.name)
+        required, properties = create_required_and_properties(tool)
 
-        return {
+        return ModelFormattedDictTool({
             "type": "function",
             "function": {
                 "name": tool.name,
@@ -128,4 +119,4 @@ class DeepSeekToolParser(ToolParser):
                     "required": required,
                 },
             },
-        }
+        })

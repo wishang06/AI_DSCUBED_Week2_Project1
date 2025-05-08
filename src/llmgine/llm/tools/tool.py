@@ -1,7 +1,7 @@
 from dataclasses import dataclass
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List
 
-from llmgine.llm.tools.types import AsyncToolFunction, ToolFunction
+from llmgine.llm.tools.types import AsyncOrSyncToolFunction
 
 
 @dataclass
@@ -51,7 +51,7 @@ class Tool:
     description: str
     parameters: List[Parameter]
     parameters: List[Parameter]
-    function: Union[ToolFunction, AsyncToolFunction]
+    function: AsyncOrSyncToolFunction
     is_async: bool = False
 
     def to_dict(self) -> Dict[str, Any]:

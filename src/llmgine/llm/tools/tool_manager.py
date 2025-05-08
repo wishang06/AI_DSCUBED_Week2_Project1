@@ -22,7 +22,11 @@ from llmgine.llm.tools.tool_parser import (
     ToolParser,
 )
 from llmgine.llm.tools.tool_register import ToolRegister
-from llmgine.llm.tools.types import AsyncOrSyncToolFunction, ToolCall
+from llmgine.llm.tools.types import (
+    AsyncOrSyncToolFunction,
+    ModelFormattedDictTool,
+    ToolCall,
+)
 
 
 class ToolManager:
@@ -85,7 +89,7 @@ class ToolManager:
                 )
             )
 
-    async def get_tools(self) -> List[Tool]:
+    async def get_tools(self) -> List[ModelFormattedDictTool]:
         """Get all registered tools from the tool register.
 
         Returns:
@@ -104,7 +108,11 @@ class ToolManager:
             )
         )
 
-        return [self.__tool_parser.parse_tool(tool) for tool in tools]
+        ret: list[ModelFormattedDictTool] = [
+            self.__tool_parser.parse_tool(tool) for tool in tools
+        ]
+
+        return ret
 
     async def execute_tool_call(self, tool_call: ToolCall) -> Optional[dict[str, Any]]:
         """Execute a tool from a ToolCall object.
