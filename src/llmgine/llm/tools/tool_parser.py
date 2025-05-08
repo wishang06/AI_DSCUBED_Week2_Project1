@@ -17,6 +17,20 @@ class ToolParser:
         pass
 
 
+def create_required_and_properties(tool: Tool) -> tuple[list[str], dict[str, Any]]:
+    required: list[str] = []
+    properties: dict[str, Any] = {}
+    for param in tool.parameters:
+        properties[param.name] = {
+            "type": param.type,
+            "description": param.description,
+        }
+        if param.required:
+            required.append(param.name)
+
+    return required, properties
+
+
 class OpenAIToolParser(ToolParser):
     """A parser for tools that can be used by OpenAI."""
 
@@ -31,15 +45,7 @@ class OpenAIToolParser(ToolParser):
         """
 
         # parameters that are required
-        required = []
-        properties = {}
-        for param in tool.parameters:
-            properties[param.name] = {
-                "type": param.type,
-                "description": param.description,
-            }
-            if param.required:
-                required.append(param.name)
+        required, properties = create_required_and_properties(tool)
 
         return {
             "type": "function",
@@ -69,15 +75,7 @@ class ClaudeToolParser(ToolParser):
         """
 
         # parameters that are required
-        required = []
-        properties = {}
-        for param in tool.parameters:
-            properties[param.name] = {
-                "type": param.type,
-                "description": param.description,
-            }
-            if param.required:
-                required.append(param.name)
+        required, properties = create_required_and_properties(tool)
 
         return {
             "type": "function",
@@ -107,15 +105,7 @@ class DeepSeekToolParser(ToolParser):
         """
 
         # parameters that are required
-        required = []
-        properties = {}
-        for param in tool.parameters:
-            properties[param.name] = {
-                "type": param.type,
-                "description": param.description,
-            }
-            if param.required:
-                required.append(param.name)
+        required, properties = create_required_and_properties(tool)
 
         return {
             "type": "function",
