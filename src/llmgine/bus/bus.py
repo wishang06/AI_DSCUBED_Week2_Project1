@@ -8,12 +8,19 @@ import asyncio
 import contextvars
 import logging
 import traceback
-from dataclasses import asdict
-from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Type, TypeVar, cast
+from typing import (
+    Any,
+    Awaitable,
+    Callable,
+    Dict,
+    List,
+    NewType,
+    Optional,
+    Type,
+    TypeVar,
+    Union,
+)
 
-# Import only what's needed at the module level and use local imports for the rest
-# to avoid circular dependencies
 from llmgine.bus.session import BusSession
 from llmgine.messages.commands import Command, CommandResult
 from llmgine.messages.events import (
@@ -27,18 +34,20 @@ from llmgine.observability.handlers.base import ObservabilityEventHandler
 # Get the base logger and wrap it with the adapter
 logger = logging.getLogger(__name__)
 
-# Context variable to hold the current session ID
+# TODO: add tracing and span context using contextvars
 trace: contextvars.ContextVar[Optional[str]] = contextvars.ContextVar(
     "trace", default=None
 )
 span: contextvars.ContextVar[Optional[str]] = contextvars.ContextVar("span", default=None)
 
-TCommand = TypeVar("TCommand", bound=Command)
-TEvent = TypeVar("TEvent", bound=Event)
-CommandHandler = Callable[[TCommand], CommandResult]
-AsyncCommandHandler = Callable[[TCommand], "asyncio.Future[CommandResult]"]
-EventHandler = Callable[[TEvent], None]
-AsyncEventHandler = Callable[[TEvent], "asyncio.Future[None]"]
+# Type variables for command and event handlers
+CommandType = TypeVar("CommandType", bound=Command)
+EventType = TypeVar("EventType", bound=Event)
+CommandHandler = Callable[[Command], CommandResult]
+AsyncCommandHandler = Awaitable[CommandResult]
+EventHandler = Callable[[Event], None]
+AsyncEventHandler = Awaitable[None]
+SessionId = NewType("SessionId", str)
 
 
 class MessageBus:
@@ -68,10 +77,14 @@ class MessageBus:
         if getattr(self, "_initialized", False):
             return
 
-        self._command_handlers: Dict[str, Dict[Type[Command], AsyncCommandHandler]] = {}
-        self._event_handlers: Dict[str, Dict[Type[Event], List[AsyncEventHandler]]] = {}
-        self._event_queue: Optional[asyncio.Queue] = None
-        self._processing_task: Optional[asyncio.Task] = None
+        self._command_handlers: Dict[
+            SessionId, Dict[Type[Command], AsyncCommandHandler]
+        ] = {}
+        self._event_handlers: Dict[
+            SessionId, Dict[Type[Event], List[AsyncEventHandler]]
+        ] = {}
+        self._event_queue: Optional[asyncio.Queue[Event]] = None
+        self._processing_task: Optional[asyncio.Task[None]] = None
         self._observability_handlers: List[ObservabilityEventHandler] = []
         self._suppress_event_errors: bool = True
         self.event_handler_errors: List[Exception] = []
@@ -83,13 +96,7 @@ class MessageBus:
         Stops the bus if running. Reset the message bus to its initial state.
         """
         await self.stop()
-        self._command_handlers: Dict[str, Dict[Type[Command], AsyncCommandHandler]] = {}
-        self._event_handlers: Dict[str, Dict[Type[Event], List[AsyncEventHandler]]] = {}
-        self._event_queue: Optional[asyncio.Queue] = None
-        self._processing_task: Optional[asyncio.Task] = None
-        self._suppress_event_errors: bool = True
-        self._observability_handlers: List[ObservabilityEventHandler] = []
-        self.event_handler_errors: List[Exception] = []
+        self.__init__()
         logger.info("MessageBus reset")
 
     def suppress_event_errors(self) -> None:
@@ -128,8 +135,6 @@ class MessageBus:
             if self._event_queue is None:
                 self._event_queue = asyncio.Queue()
                 logger.info("Event queue created")
-
-            if self._event_queue is not None:
                 self._processing_task = asyncio.create_task(self._process_events())
                 logger.info("MessageBus started")
             else:
@@ -161,12 +166,14 @@ class MessageBus:
         """
         Register an observability handler for a specific session.
         """
+        # TODO: add tracing and span
+        # TODO: add option to await or not await
         self._observability_handlers.append(handler)
 
     def register_command_handler(
         self,
-        command_type: Type[TCommand],
-        handler: CommandHandler,
+        command_type: Type[CommandType],
+        handler: Union[AsyncCommandHandler, CommandHandler],
         session_id: str = "ROOT",
     ) -> None:
         """
@@ -178,25 +185,25 @@ class MessageBus:
         Raises:
             ValueError: If a handler is already registered for the command in this session.
         """
-        session_id = session_id or "ROOT"
 
         if session_id not in self._command_handlers:
-            self._command_handlers[session_id] = {}
+            self._command_handlers[SessionId(session_id)] = {}
 
-        async_handler = self._wrap_handler_as_async(handler)
+        if not isinstance(handler, Awaitable[CommandResult]):
+            raise ValueError("Handler must be an awaitable function")
 
         if command_type in self._command_handlers[session_id]:
             raise ValueError(
                 f"Command handler for {command_type} already registered in session {session_id}"
             )
 
-        self._command_handlers[session_id][command_type] = async_handler
+        self._command_handlers[session_id][command_type] = handler
         logger.debug(
             f"Registered command handler for {command_type} in session {session_id}"
         )  # TODO test
 
     def register_event_handler(
-        self, event_type: Type[TEvent], handler: EventHandler, session_id: str = "ROOT"
+        self, event_type: Type[EventType], handler: EventHandler, session_id: str = "ROOT"
     ) -> None:
         """
         Register an event handler for a specific event type and session.
@@ -244,7 +251,7 @@ class MessageBus:
             )
 
     def unregister_command_handler(
-        self, command_type: Type[TCommand], session_id: str = "ROOT"
+        self, command_type: Type[CommandType], session_id: str = "ROOT"
     ) -> None:
         """
         Unregister a command handler for a specific command type and session.
@@ -264,7 +271,7 @@ class MessageBus:
             )
 
     def unregister_event_handlers(
-        self, event_type: Type[TEvent], session_id: str = "ROOT"
+        self, event_type: Type[EventType], session_id: str = "ROOT"
     ) -> None:
         """
         Unregister an event handler for a specific event type and session.
@@ -475,7 +482,35 @@ class MessageBus:
                         )
                     )
 
-    def _wrap_handler_as_async(self, handler: Callable) -> Callable:
+    def _wrap_event_handler_as_async(
+        self, handler: EventHandler[Event]
+    ) -> AsyncEventHandler[Event]:
+        async def async_wrapper(*args, **kwargs):  # type: ignore
+            return handler(*args, **kwargs)  # type: ignore
+
+        async_wrapper.function = handler  # type: ignore
+
+        return async_wrapper
+
+    def _wrap_command_handler_as_async(
+        self, handler: CommandHandler[Command]
+    ) -> AsyncCommandHandler[Command]:
+        async def async_wrapper(*args, **kwargs):  # type: ignore
+            return handler(*args, **kwargs)  # type: ignore
+
+        async_wrapper.function = handler  # type: ignore
+
+        return async_wrapper
+
+    def _wrap_handler_as_async(
+        self,
+        handler: Union[
+            AsyncCommandHandler[Command],
+            AsyncEventHandler[Event],
+            CommandHandler[Command],
+            EventHandler[Event],
+        ],
+    ) -> AsyncCommandHandler[Command] | AsyncEventHandler[Event]:
         """
         Convert synchronous handlers to asynchronous if needed.
         Args:
@@ -486,9 +521,9 @@ class MessageBus:
         if asyncio.iscoroutinefunction(handler):
             return handler
 
-        async def async_wrapper(*args, **kwargs):
-            return handler(*args, **kwargs)
+        async def async_wrapper(*args, **kwargs):  # type: ignore
+            return handler(*args, **kwargs)  # type: ignore
 
-        async_wrapper.function = handler
+        async_wrapper.function = handler  # type: ignore
 
         return async_wrapper
