@@ -7,18 +7,10 @@ from llmgine.messages.commands import Command, CommandResult
 from llmgine.bus.bus import MessageBus
 from llmgine.messages.events import Event
 
-<<<<<<< HEAD
-=======
-
->>>>>>> origin/main
 @dataclass
 class SinglePassEngineCommand(Command):
     prompt: str = ""
 
-<<<<<<< HEAD
-=======
-
->>>>>>> origin/main
 @dataclass
 class SinglePassEngineStatusEvent(Event):
     status: str = ""
