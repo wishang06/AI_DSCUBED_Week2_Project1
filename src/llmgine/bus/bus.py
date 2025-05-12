@@ -14,7 +14,6 @@ from typing import (
     Callable,
     Dict,
     List,
-    NewType,
     Optional,
     Type,
     TypeVar,
@@ -24,6 +23,7 @@ from typing import (
 
 from llmgine.bus.session import BusSession
 from llmgine.bus.utils import is_async_function
+from llmgine.llm.tools.types import SessionID
 from llmgine.messages.commands import Command, CommandResult
 from llmgine.messages.events import (
     CommandResultEvent,
@@ -49,7 +49,11 @@ CommandHandler = Callable[[Command], CommandResult]
 AsyncCommandHandler = Callable[[Command], Awaitable[CommandResult]]
 EventHandler = Callable[[Event], None]
 AsyncEventHandler = Callable[[Event], Awaitable[None]]
-SessionId = NewType("SessionId", str)
+
+
+# Combined types
+
+AsyncOrSyncCommandHandler = Union[AsyncCommandHandler, CommandHandler]
 
 
 class MessageBus:
@@ -80,10 +84,10 @@ class MessageBus:
             return
 
         self._command_handlers: Dict[
-            SessionId, Dict[Type[Command], AsyncCommandHandler]
+            SessionID, Dict[Type[Command], AsyncCommandHandler]
         ] = {}
         self._event_handlers: Dict[
-            SessionId, Dict[Type[Event], List[AsyncEventHandler]]
+            SessionID, Dict[Type[Event], List[AsyncEventHandler]]
         ] = {}
         self._event_queue: Optional[asyncio.Queue[Event]] = None
         self._processing_task: Optional[asyncio.Task[None]] = None
@@ -175,7 +179,7 @@ class MessageBus:
     def register_command_handler(
         self,
         command_type: Type[CommandType],
-        handler: Union[AsyncCommandHandler, CommandHandler],
+        handler: AsyncOrSyncCommandHandler,
         session_id: str = "ROOT",
     ) -> None:
         """
@@ -189,23 +193,28 @@ class MessageBus:
         """
 
         if session_id not in self._command_handlers:
-            self._command_handlers[SessionId(session_id)] = {}
+            self._command_handlers[SessionID(session_id)] = {}
 
         if not is_async_function(handler):
             handler = self._wrap_command_handler_as_async(cast(CommandHandler, handler))
 
-        if command_type in self._command_handlers[SessionId(session_id)]:
+        if command_type in self._command_handlers[SessionID(session_id)]:
             raise ValueError(
                 f"Command handler for {command_type} already registered in session {session_id}"
             )
 
-        self._command_handlers[SessionId(session_id)][command_type] = cast(AsyncCommandHandler, handler)
+        self._command_handlers[SessionID(session_id)][command_type] = cast(
+            AsyncCommandHandler, handler
+        )
         logger.debug(
             f"Registered command handler for {command_type} in session {session_id}"
         )  # TODO test
 
     def register_event_handler(
-        self, event_type: Type[EventType], handler: Union[AsyncEventHandler, EventHandler], session_id: str = "ROOT"
+        self,
+        event_type: Type[EventType],
+        handler: Union[AsyncEventHandler, EventHandler],
+        session_id: SessionID = SessionID("ROOT"),
     ) -> None:
         """
         Register an event handler for a specific event type and session.
@@ -214,21 +223,25 @@ class MessageBus:
             event_type: The type of event to handle.
             handler: The handler function/coroutine.
         """
-        session_id = session_id or "ROOT"
+        session_id = session_id or SessionID(
+            "ROOT"
+        )  # TODO is this needed? with default arg?
 
         if session_id not in self._event_handlers:
-            self._event_handlers[SessionId(session_id)] = {}
+            self._event_handlers[SessionID(session_id)] = {}
 
-        if event_type not in self._event_handlers[SessionId(session_id)]:
-            self._event_handlers[SessionId(session_id)][event_type] = []
+        if event_type not in self._event_handlers[SessionID(session_id)]:
+            self._event_handlers[SessionID(session_id)][event_type] = []
 
         if not is_async_function(handler):
             handler = self._wrap_event_handler_as_async(cast(EventHandler, handler))
 
-        self._event_handlers[SessionId(session_id)][event_type].append(cast(AsyncEventHandler, handler))
+        self._event_handlers[SessionID(session_id)][event_type].append(
+            cast(AsyncEventHandler, handler)
+        )
         logger.debug(f"Registered event handler for {event_type} in session {session_id}")
 
-    def unregister_session_handlers(self, session_id: str) -> None:
+    def unregister_session_handlers(self, session_id: SessionID) -> None:
         """
         Unregister all command and event handlers for a specific session.
         Args:
@@ -313,8 +326,8 @@ class MessageBus:
             handler = self._command_handlers[command.session_id].get(command_type)
 
         # Default to ROOT handlers if no session-specific handler is found
-        if handler is None and SessionId("ROOT") in self._command_handlers:
-            handler = self._command_handlers[SessionId("ROOT")].get(command_type)
+        if handler is None and SessionID("ROOT") in self._command_handlers:
+            handler = self._command_handlers[SessionID("ROOT")].get(command_type)
             logger.warning(
                 f"Defaulting to ROOT command handler for {command_type.__name__} in session {command.session_id}"
             )
@@ -342,7 +355,7 @@ class MessageBus:
             failed_result = CommandResult(
                 success=False,
                 command_id=command.command_id,
-                error=f"{type(e).__name__}: {str(e)}",
+                error=f"{type(e).__name__}: {e!s}",
                 metadata={"exception_details": traceback.format_exc()},
             )
             await self.publish(CommandResultEvent(command_result=failed_result))
@@ -379,7 +392,7 @@ class MessageBus:
 
         while True:
             try:
-                event = await self._event_queue.get() # type: ignore
+                event = await self._event_queue.get()  # type: ignore
                 logger.debug(f"Dequeued event {type(event).__name__}")
 
                 try:
@@ -390,7 +403,7 @@ class MessageBus:
                 except Exception:
                     logger.exception(f"Error processing event {type(event).__name__}")
                 finally:
-                    self._event_queue.task_done() # type: ignore
+                    self._event_queue.task_done()  # type: ignore
 
             except asyncio.CancelledError:
                 logger.info("Event processing loop cancelled")
@@ -405,8 +418,8 @@ class MessageBus:
         """
         Ensure all events in the queue are processed.
         """
-        while not self._event_queue.empty(): # type: ignore
-            event = await self._event_queue.get() # type: ignore
+        while not self._event_queue.empty():  # type: ignore
+            event = await self._event_queue.get()  # type: ignore
             await self._handle_event(event)
 
     async def _handle_event(self, event: Event) -> None:
@@ -421,30 +434,30 @@ class MessageBus:
         # handle session specific handlers
         if event.session_id in self._event_handlers and event.session_id != "ROOT":
             if event_type in self._event_handlers[event.session_id]:
-                handlers.extend(self._event_handlers[event.session_id][event_type]) # type: ignore
+                handlers.extend(self._event_handlers[event.session_id][event_type])  # type: ignore
 
             # Default to ROOT handlers if no session-specific handler is found
         elif event.session_id != "ROOT":
             # there is no session in event, so we use ROOT handlers if possible
-            if SessionId("ROOT") in self._event_handlers:
+            if SessionID("ROOT") in self._event_handlers:
                 # there is root handlers, so we use them
-                if event_type in self._event_handlers[SessionId("ROOT")]:
-                    handlers.extend(self._event_handlers[SessionId("ROOT")][event_type]) # type: ignore
+                if event_type in self._event_handlers[SessionID("ROOT")]:
+                    handlers.extend(self._event_handlers[SessionID("ROOT")][event_type])  # type: ignore
                     logger.warning(
                         f"Defaulting to ROOT event handler for {event_type} in session {event.session_id}"
                     )
 
         # handle root handlers
-        if event.session_id == "ROOT" and SessionId("ROOT") in self._event_handlers:
-            if event_type in self._event_handlers[SessionId("ROOT")]:
-                handlers.extend(self._event_handlers[SessionId("ROOT")][event_type]) # type: ignore
+        if event.session_id == "ROOT" and SessionID("ROOT") in self._event_handlers:
+            if event_type in self._event_handlers[SessionID("ROOT")]:
+                handlers.extend(self._event_handlers[SessionID("ROOT")][event_type])  # type: ignore
 
         # Global handlers handle all events
-        if SessionId("GLOBAL") in self._event_handlers:
-            if event_type in self._event_handlers[SessionId("GLOBAL")]:
-                handlers.extend(self._event_handlers[SessionId("GLOBAL")][event_type]) # type: ignore
+        if SessionID("GLOBAL") in self._event_handlers:
+            if event_type in self._event_handlers[SessionID("GLOBAL")]:
+                handlers.extend(self._event_handlers[SessionID("GLOBAL")][event_type])  # type: ignore
             logger.info(
-                f"Using GLOBAL event handlers {self._event_handlers[SessionId('GLOBAL')]} for {event_type} in session{event.session_id}"
+                f"Using GLOBAL event handlers {self._event_handlers[SessionID('GLOBAL')]} for {event_type} in session{event.session_id}"
             )
 
         if not handlers:
@@ -468,14 +481,14 @@ class MessageBus:
                     self.event_handler_errors.append(e)
 
         logger.debug(
-            f"Dispatching event {event_type} in session {event.session_id} to {len(handlers)} handlers" # type: ignore
+            f"Dispatching event {event_type} in session {event.session_id} to {len(handlers)} handlers"  # type: ignore
         )
-        tasks = [asyncio.create_task(handler(event)) for handler in handlers] # type: ignore
-        results = await asyncio.gather(*tasks, return_exceptions=True) # type: ignore
-        for i, result in enumerate(results): # type: ignore
+        tasks = [asyncio.create_task(handler(event)) for handler in handlers]  # type: ignore
+        results = await asyncio.gather(*tasks, return_exceptions=True)  # type: ignore
+        for i, result in enumerate(results):  # type: ignore
             if isinstance(result, Exception):
                 self.event_handler_errors.append(result)
-                handler_name = getattr(handlers[i], "__qualname__", repr(handlers[i])) # type: ignore
+                handler_name = getattr(handlers[i], "__qualname__", repr(handlers[i]))  # type: ignore
                 logger.exception(
                     f"Error in handler '{handler_name}' for {event_type}: {result}"
                 )
@@ -488,16 +501,14 @@ class MessageBus:
                         )
                     )
 
-    def _wrap_event_handler_as_async(
-        self, handler: EventHandler
-    ) -> AsyncEventHandler:
+    def _wrap_event_handler_as_async(self, handler: EventHandler) -> AsyncEventHandler:
         async def async_wrapper(event: Event):
             return handler(event)
 
-        async_wrapper.function = handler # type: ignore[attr-defined]
+        async_wrapper.function = handler  # type: ignore[attr-defined]
 
         return async_wrapper
-    
+
     def _wrap_command_handler_as_async(
         self, handler: CommandHandler
     ) -> AsyncCommandHandler:

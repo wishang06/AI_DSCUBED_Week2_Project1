@@ -1,25 +1,27 @@
 import asyncio
 import os
 import sys
-from llmgine.bus.bus import MessageBus
+from dataclasses import dataclass
+from typing import Any, Callable, Optional, Type
+
+from rich.live import Live
+from rich.spinner import Spinner
+
+from llmgine.bus.bus import AsyncOrSyncCommandHandler, MessageBus
 from llmgine.llm.engine.engine import (
     DummyEngineConfirmationInput,
     DummyEngineStatusUpdate,
     DummyEngineToolResult,
 )
+from llmgine.llm.tools.types import SessionID
 from llmgine.messages.commands import Command, CommandResult
 from llmgine.messages.events import Event
-from rich.live import Live
-from rich.spinner import Spinner
-from rich.text import Text
-from typing import Any, Callable, Type
-from dataclasses import dataclass
 from llmgine.ui.cli.components import (
-    AssistantComponent,
     CLIComponent,
     CLIPrompt,
     EngineResultComponent,
     ToolComponent,
+    UserComponent,
     UserGeneralInput,
     YesNoPrompt,
 )
@@ -43,34 +45,34 @@ class EngineCLI:
     It needs to start the main loop using main.
     """
 
-    def __init__(self, session_id: str):
+    def __init__(self, session_id: SessionID):
         # Basic UI components
-        self.components = []
-        self.component_lookup = {}
-        self.prompt_lookup = {}
-        self.cli_command_lookup = {}
+        self.components: list[UserComponent] = []
+        self.component_lookup: dict[Any, Any] = {}
+        self.prompt_lookup: dict[Any, Any] = {}
+        self.cli_command_lookup: dict[Any, Any] = {}  # TODO what is this type?
         # Loading UI components
-        self.spinner = None
-        self.live = None
-        self.hidden = False
+        self.spinner: Optional[Any] = None
+        self.live: Optional[Any] = None
+        self.hidden: bool = False
         # Bus
-        self.bus = MessageBus()
-        self.session_id = session_id
+        self.bus: MessageBus = MessageBus()
+        self.session_id: SessionID = session_id
         # Engine
-        self.engine = None
-        self.engine_command = None
-        self.engine_result_component = EngineResultComponent
+        self.engine: Optional[Any] = None  # TODO rm any
+        self.engine_command: Optional[Any] = None  # TODO rm any
+        self.engine_result_component: Any = EngineResultComponent
         # CLI commands
         self.register_default_cli_commands()
 
-    def register_engine(self, engine: Any):
+    def register_engine(self, engine: Any):  # TODO nathan idk what this is
         self.engine = engine
 
-
-    def register_engine_command(self, command: Type[Command], engine_function: Callable):
+    def register_engine_command(
+        self, command: Type[Command], engine_function: AsyncOrSyncCommandHandler
+    ):
         self.engine_command = command
         self.bus.register_command_handler(command, engine_function, self.session_id)
-
 
     def register_engine_result_component(self, component: Type[CLIComponent]):
         self.engine_result_component = component
@@ -78,9 +80,11 @@ class EngineCLI:
     async def main(self):
         self.validate_setup()
         while True:
-            user_input = await self.main_input()
+            user_input = await self.main_input()  # TODO what type is this
             if user_input is None:
                 continue
+
+            assert self.engine_command
 
             result = await self.bus.execute(
                 self.engine_command(prompt=user_input, session_id=self.session_id)
@@ -100,18 +104,21 @@ class EngineCLI:
             raise ValueError("Engine result component not registered")
 
     async def main_input(self):
-        prompt = UserGeneralInput.from_prompt("Do you want to continue?", self)
-        result = await prompt.get_input()
+        prompt: UserGeneralInput = UserGeneralInput.from_prompt(
+            "Do you want to continue?", self
+        )
+        result = await prompt.get_input()  # TODO what type is this
         self.clear_screen()
         self.redraw()
         if prompt.component is not None:
-            component = prompt.component
+            component: UserComponent = prompt.component
             component.render()
             self.components.append(component)
+
         return result
 
     async def update_status(self, event: Event):
-        if event.status == "finished":
+        if event.status == "finished":  # TODO event doesn't have status?
             await self.stop_loading()
         else:
             if not self.spinner:
@@ -202,8 +209,8 @@ class EngineCLI:
 async def main():
     from llmgine.llm.engine.engine import DummyEngine, DummyEngineCommand
 
-    engine = DummyEngine("123")
-    chat = EngineCLI("123")
+    engine = DummyEngine(SessionID("123"))
+    chat = EngineCLI(SessionID("123"))
     await MessageBus().start()
     chat.register_engine(engine)
     chat.register_engine_command(DummyEngineCommand, engine.handle_command)

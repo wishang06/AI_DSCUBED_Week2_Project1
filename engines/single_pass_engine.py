@@ -1,15 +1,20 @@
+import uuid
 from dataclasses import dataclass
 from typing import Optional
-import uuid
+
+from llmgine.bus.bus import MessageBus
 from llmgine.llm.engine.engine import Engine
 from llmgine.llm.models.model import Model
+from llmgine.llm.providers.response import LLMResponse
+from llmgine.llm.tools.types import SessionID
 from llmgine.messages.commands import Command, CommandResult
-from llmgine.bus.bus import MessageBus
 from llmgine.messages.events import Event
+
 
 @dataclass
 class SinglePassEngineCommand(Command):
     prompt: str = ""
+
 
 @dataclass
 class SinglePassEngineStatusEvent(Event):
@@ -17,14 +22,12 @@ class SinglePassEngineStatusEvent(Event):
 
 
 class SinglePassEngine(Engine):
-
     def __init__(
-          self,
-          model: Model, 
-          system_prompt: Optional[str] = None, 
-          session_id: Optional[str] = None
-    ) :
-
+        self,
+        model: Model,
+        system_prompt: Optional[str] = None,
+        session_id: Optional[SessionID] = None,
+    ):
         self.model = model
         self.system_prompt = system_prompt
         self.session_id = session_id
@@ -36,7 +39,6 @@ class SinglePassEngine(Engine):
             return CommandResult(success=True, result=result)
         except Exception as e:
             return CommandResult(success=False, error=str(e))
-        
 
     async def execute(self, prompt: str) -> str:
         if self.system_prompt:
@@ -49,7 +51,8 @@ class SinglePassEngine(Engine):
         await self.bus.publish(
             SinglePassEngineStatusEvent(status="Calling LLM", session_id=self.session_id)
         )
-        response = await self.model.generate(context)
+
+        response: LLMResponse = await self.model.generate(context)
         await self.bus.publish(
             SinglePassEngineStatusEvent(status="finished", session_id=self.session_id)
         )
@@ -59,18 +62,17 @@ class SinglePassEngine(Engine):
 async def use_single_pass_engine(
     prompt: str, model: Model, system_prompt: Optional[str] = None
 ):
-
-    session_id = str(uuid.uuid4())
+    session_id = SessionID(str(uuid.uuid4()))
     engine = SinglePassEngine(model, system_prompt, session_id)
     return await engine.execute(prompt)
 
 
 async def main(case: int):
-    from llmgine.ui.cli.cli import EngineCLI
-    from llmgine.ui.cli.components import EngineResultComponent
-    from llmgine.bootstrap import ApplicationConfig, ApplicationBootstrap
+    from llmgine.bootstrap import ApplicationBootstrap, ApplicationConfig
     from llmgine.llm.models.openai_models import Gpt41Mini
     from llmgine.llm.providers.providers import Providers
+    from llmgine.ui.cli.cli import EngineCLI
+    from llmgine.ui.cli.components import EngineResultComponent
 
     config = ApplicationConfig(enable_console_handler=False)
     bootstrap = ApplicationBootstrap(config)
@@ -95,5 +97,4 @@ async def main(case: int):
 if __name__ == "__main__":
     import asyncio
 
-    asyncio.run(main(1))
-
+    asyncio.run(main(2))

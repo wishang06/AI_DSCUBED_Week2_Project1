@@ -17,6 +17,9 @@ ContextType = NewType("ContextType", List[Dict[str, Any]])
 ModelNameStr = NewType("ModelNameStr", str)
 
 
+SessionID = NewType("SessionID", str)
+
+
 # TODO this is a class not really a type probably put into seperate file
 
 
