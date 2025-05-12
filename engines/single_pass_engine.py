@@ -6,6 +6,7 @@ from llmgine.bus.bus import MessageBus
 from llmgine.llm.engine.engine import Engine
 from llmgine.llm.models.model import Model
 from llmgine.llm.providers.response import LLMResponse
+from llmgine.llm.tools.types import SessionID
 from llmgine.messages.commands import Command, CommandResult
 from llmgine.messages.events import Event
 
@@ -25,7 +26,7 @@ class SinglePassEngine(Engine):
         self,
         model: Model,
         system_prompt: Optional[str] = None,
-        session_id: Optional[str] = None,
+        session_id: Optional[SessionID] = None,
     ):
         self.model = model
         self.system_prompt = system_prompt
@@ -50,17 +51,18 @@ class SinglePassEngine(Engine):
         await self.bus.publish(
             SinglePassEngineStatusEvent(status="Calling LLM", session_id=self.session_id)
         )
-        response: LLMResponse = await self.model.generate(context)  # TODO nathan
+
+        response: LLMResponse = await self.model.generate(context)
         await self.bus.publish(
             SinglePassEngineStatusEvent(status="finished", session_id=self.session_id)
         )
-        return response.content  # TODO nathan
+        return response.content
 
 
 async def use_single_pass_engine(
     prompt: str, model: Model, system_prompt: Optional[str] = None
 ):
-    session_id = str(uuid.uuid4())
+    session_id = SessionID(str(uuid.uuid4()))
     engine = SinglePassEngine(model, system_prompt, session_id)
     return await engine.execute(prompt)
 
