@@ -28,11 +28,11 @@ class CLIComponent(ABC):
 
 class CLIPrompt(ABC):
     @abstractmethod
-    def get_input(self, *args, **kwargs):
+    def get_input(self, *args, **kwargs) -> None:
         pass
 
     @abstractmethod
-    def component(self):
+    def component(self) -> None:
         pass
 
 
@@ -239,7 +239,7 @@ class YesNoPrompt(CLIPrompt):
     Command must have property prompt.
     """
 
-    def __init__(self, command: Command):
+    def __init__(self, command: EngineResultCommandResult):
         self.prompt = command.prompt
         self.result = None
 
@@ -260,10 +260,10 @@ class YesNoPrompt(CLIPrompt):
             return user_input
 
     @property
-    def component(self):
+    def component(self) -> None:
         return None
 
-    def attach_cli(self, cli: "EngineCLI"):
+    def attach_cli(self, cli: "EngineCLI") -> None:
         self.cli = None
 
 

@@ -1,8 +1,7 @@
 """In-memory implementation of the ContextManager interface."""
 
-import asyncio
-from typing import Any, Dict, List, Optional
 import uuid
+from typing import Any, Dict, List, Optional
 
 from llmgine.bus.bus import MessageBus
 from llmgine.llm.context import ContextManager
@@ -10,13 +9,15 @@ from llmgine.llm.context.context_events import (
     ChatHistoryRetrievedEvent,
     ChatHistoryUpdatedEvent,
 )
+from llmgine.llm.tools.types import SessionID
+
 
 class SimpleChatHistory:
-    def __init__(self, engine_id: str, session_id: str):
+    def __init__(self, engine_id: str, session_id: SessionID):
         self.engine_id = engine_id
-        self.session_id = session_id
+        self.session_id: SessionID = session_id
         self.context_manager_id = str(uuid.uuid4())
-        self.bus = MessageBus()
+        self.bus: MessageBus = MessageBus()
         self.response_log: List[Any] = []  # Logs raw responses/inputs
         self.chat_history: List[Dict[str, Any]] = []  # Stores OpenAI formatted messages
         self.system_prompt: Optional[str] = None  # Changed from self.system

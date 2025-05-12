@@ -73,13 +73,13 @@ class ApplicationBootstrap(Generic[TConfig]):
     observability event handlers.
     """
 
-    def __init__(self, config: TConfig = None):
+    def __init__(self, config: TConfig = ApplicationConfig()):
         """Initialize the bootstrap.
 
         Args:
             config: Application configuration
         """
-        self.config = config or ApplicationConfig()
+        self.config = config
 
         # --- Configure Standard Logging ---
         # Get log level from config, default to INFO

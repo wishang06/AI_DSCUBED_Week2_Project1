@@ -2,7 +2,9 @@
 
 import asyncio
 from dataclasses import dataclass
+
 from llmgine.bus.bus import MessageBus
+from llmgine.llm.tools.types import SessionID
 from llmgine.messages.commands import Command, CommandResult
 from llmgine.messages.events import Event
 
@@ -37,8 +39,8 @@ class DummyEngineToolResult(Event):
 class DummyEngine(Engine):
     """Dummy engine for testing"""
 
-    def __init__(self, session_id: str):
-        self.session_id = session_id
+    def __init__(self, session_id: SessionID):
+        self.session_id: SessionID = session_id
         self.bus = MessageBus()
 
     async def handle_command(self, command: Command):
@@ -56,7 +58,9 @@ class DummyEngine(Engine):
         )
         # breakpoint()
         confirmation = await self.bus.execute(
-            DummyEngineConfirmationInput(prompt="Do you want to execute a tool?", session_id=self.session_id)
+            DummyEngineConfirmationInput(
+                prompt="Do you want to execute a tool?", session_id=self.session_id
+            )
         )
         await self.bus.publish(
             DummyEngineStatusUpdate(status="executing tool", session_id=self.session_id)
@@ -81,7 +85,7 @@ class DummyEngine(Engine):
 
 
 def main():
-    engine = DummyEngine("123")
+    engine = DummyEngine(SessionID("123"))
     result = engine.handle_command(DummyEngineCommand(prompt="Hello, world!"))
     print(result)
 

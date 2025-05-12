@@ -1,16 +1,14 @@
-from typing import Any, Dict, List, Literal, Optional, Union
 import uuid
+from typing import Any, Dict, List, Literal, Optional, Union
+
 from litellm import AsyncOpenAI
-from llmgine.llm.providers.events import LLMCallEvent, LLMResponseEvent
-from llmgine.llm.providers.providers import Providers
-import openai
-import os
+from openai.types.chat import ChatCompletion
 
 from llmgine.bus.bus import MessageBus
 from llmgine.llm.providers import LLMProvider
+from llmgine.llm.providers.events import LLMCallEvent, LLMResponseEvent
+from llmgine.llm.providers.providers import Providers
 from llmgine.llm.providers.response import LLMResponse, ResponseTokens
-from openai.types.chat import ChatCompletion
-
 from llmgine.llm.tools.types import ToolCall
 
 OpenRouterProviders = Literal[
@@ -218,6 +216,6 @@ class OpenRouterProvider(LLMProvider):
         else:
             return OpenRouterResponse(response)
 
-    def stream():
+    def stream() -> None:
         # TODO: Implement streaming
         raise NotImplementedError("Streaming is not supported for OpenRouter")

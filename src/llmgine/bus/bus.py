@@ -288,7 +288,7 @@ class MessageBus:
             )
 
     def unregister_event_handlers(
-        self, event_type: Type[EventType], session_id: str = "ROOT"
+        self, event_type: Type[EventType], session_id: SessionID = SessionID("ROOT")
     ) -> None:
         """
         Unregister an event handler for a specific event type and session.

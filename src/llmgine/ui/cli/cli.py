@@ -143,7 +143,7 @@ class EngineCLI:
         component.render()
         self.components.append(component)
 
-    async def prompt_router(self, command: Command):
+    async def prompt_router(self, command: Command) -> CommandResult:
         try:
             await self.stop_loading()
             prompt = self.prompt_lookup[type(command)]
@@ -160,28 +160,30 @@ class EngineCLI:
         except Exception as e:
             return CommandResult(success=False, error=str(e))
 
-    def register_component_event(self, event: Type[Event], component: Type[CLIComponent]):
+    def register_component_event(
+        self, event: Type[Event], component: Type[CLIComponent]
+    ) -> None:
         self.component_lookup[event] = component
         self.bus.register_event_handler(event, self.component_router, self.session_id)
 
-    def register_prompt_command(self, command: Type[Command], prompt: CLIPrompt):
+    def register_prompt_command(self, command: Type[Command], prompt: CLIPrompt) -> None:
         self.prompt_lookup[command] = prompt
         self.bus.register_command_handler(command, self.prompt_router, self.session_id)
 
-    def register_loading_event(self, event: Event):
+    def register_loading_event(self, event: Event) -> None:
         self.bus.register_event_handler(event, self.update_status, self.session_id)
 
-    def redraw(self):
+    def redraw(self) -> None:
         self.clear_screen()
         for component in self.components:
             component.render()
 
-    def clear_screen(self):
+    def clear_screen(self) -> None:
         os.system("cls" if os.name == "nt" else "clear")
 
     # CLI COMMANDS STRUCTURE
 
-    def register_cli_command(self, command: str, func: Callable):
+    def register_cli_command(self, command: str, func: Callable) -> None:
         self.cli_command_lookup[command] = func
 
     def process_cli_cmds(self, input: str):
@@ -206,7 +208,7 @@ class EngineCLI:
         self.register_cli_command("exit", self.exit_cmd)
 
 
-async def main():
+async def main() -> None:
     from llmgine.llm.engine.engine import DummyEngine, DummyEngineCommand
 
     engine = DummyEngine(SessionID("123"))

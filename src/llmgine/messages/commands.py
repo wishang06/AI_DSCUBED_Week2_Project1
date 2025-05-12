@@ -27,7 +27,7 @@ class Command:
     session_id: Optional[SessionID] = None
 
     def __post_init__(self):
-        if self.session_id is None:  # TODO  can't this be removed?
+        if self.session_id is None:  # TODO  can't this be removed? and use default arg
             self.session_id = SessionID("ROOT")
 
 
