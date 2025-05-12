@@ -12,7 +12,7 @@ from typing import Any, Dict, Optional
 
 from llmgine.llm.tools.types import SessionID
 from llmgine.messages.commands import Command, CommandResult
-
+from types import FrameType
 
 @dataclass
 class Event:
@@ -27,13 +27,15 @@ class Event:
     metadata: Dict[str, Any] = field(default_factory=dict)
     session_id: Optional[SessionID] = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         # Set the session id to GLOBAL if it is not set
         if self.session_id is None:
             self.session_id = SessionID("ROOT")
 
         # Add metadata about where this event was created
-        frame = inspect.currentframe().f_back
+        tmp: Optional[Any] = inspect.currentframe()
+        assert tmp is not None
+        frame: FrameType = tmp.f_back
         if frame:
             module = frame.f_globals.get("__name__", "unknown")
             function = frame.f_code.co_name
@@ -47,20 +49,20 @@ class Event:
 class EventHandlerFailedEvent(Event):
     """Event emitted when an event handler fails."""
 
-    event: Event = None
-    handler: str = None
-    exception: Exception = None
+    event: Optional[Event] = None
+    handler: Optional[str] = None
+    exception: Optional[Exception] = None
 
 
 @dataclass
 class CommandStartedEvent(Event):
     """Event emitted when a command is started."""
 
-    command: Command = None
+    command: Optional[Command] = None
 
 
 @dataclass
 class CommandResultEvent(Event):
     """Event emitted when a command result is created."""
 
-    command_result: CommandResult = None
+    command_result: Optional[CommandResult] = None

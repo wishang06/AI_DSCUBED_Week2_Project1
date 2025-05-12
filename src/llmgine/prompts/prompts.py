@@ -1,11 +1,10 @@
-import os
 from dataclasses import dataclass
 from pathlib import Path
-import string
+from typing import Any
 
 # Helper dictionary for safe formatting
-class SafeFormatterDict(dict):
-    def __missing__(self, key):
+class SafeFormatterDict(dict[str, Any]):
+    def __missing__(self, key: str) -> str:
         return f"{{{key}}}"
 
 @dataclass
@@ -13,7 +12,7 @@ class Prompt:
     """Represents a prompt template that can be formatted."""
     template: str
 
-    def format(self, **kwargs) -> str:
+    def format(self, **kwargs: Any) -> str:
         """
         Formats the prompt template using the provided keyword arguments.
         If a key in the template is not found in kwargs, it leaves the placeholder unchanged.
@@ -55,7 +54,7 @@ def get_prompt(file_path: str | Path) -> Prompt:
         raise
 
 # New function to dump prompt to file
-def dump_prompt(prompt: Prompt, file_path: str | Path):
+def dump_prompt(prompt: Prompt, file_path: str | Path) -> None:
     """
     Writes the prompt template content to a markdown file.
 

@@ -9,7 +9,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Dict, Optional
-
+from types import FrameType
 from llmgine.llm.tools.types import SessionID
 
 
@@ -26,9 +26,15 @@ class Command:
     metadata: Dict[str, Any] = field(default_factory=dict)
     session_id: Optional[SessionID] = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.session_id is None:  # TODO  can't this be removed? and use default arg
             self.session_id = SessionID("ROOT")
+
+
+
+
+
+
 
 
 @dataclass
@@ -43,9 +49,13 @@ class CommandResult:
     metadata: Dict[str, Any] = field(default_factory=dict)
     session_id: Optional[SessionID] = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         # Add metadata about where this command was handled
-        frame = inspect.currentframe().f_back
+
+        tmp: Optional[Any] = inspect.currentframe()
+        assert tmp is not None
+        frame : FrameType = tmp.f_back
+
         if frame:
             module = frame.f_globals.get("__name__", "unknown")
             function = frame.f_code.co_name

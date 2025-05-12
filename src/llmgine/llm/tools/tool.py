@@ -50,7 +50,6 @@ class Tool:
     name: str
     description: str
     parameters: List[Parameter]
-    parameters: List[Parameter]
     function: AsyncOrSyncToolFunction
     is_async: bool = False
 

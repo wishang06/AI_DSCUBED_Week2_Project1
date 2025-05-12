@@ -1,17 +1,17 @@
 from dataclasses import dataclass
-
+from typing import Type, Dict, Any, Tuple, Self, cast
 
 class Singleton:
     """
     A base class that ensures only one instance of a class exists.
     """
 
-    _instances = {}
+    _instances: Dict[Type['Singleton'], 'Singleton'] = {}
 
-    def __new__(cls, *args, **kwargs):
+    def __new__(cls: Type[Self], *args: Any, **kwargs: Any) -> Self:
         if cls not in cls._instances:
             cls._instances[cls] = super(Singleton, cls).__new__(cls)
-        return cls._instances[cls]
+        return cast(Self, cls._instances[cls])
 
 
 @dataclass
@@ -24,5 +24,5 @@ class CLIConfig(Singleton):
 
     # Add your configuration fields here
     max_width: int = 9999
-    padding: tuple = (1, 2)
+    padding: Tuple[int, int] = (1, 2)
     vi_mode: bool = True
