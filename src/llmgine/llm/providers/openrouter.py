@@ -9,7 +9,7 @@ from llmgine.llm.providers import LLMProvider
 from llmgine.llm.providers.events import LLMCallEvent, LLMResponseEvent
 from llmgine.llm.providers.providers import Providers
 from llmgine.llm.providers.response import LLMResponse, ResponseTokens
-from llmgine.llm.tools.types import ToolCall
+from llmgine.llm.tools.toolCall import ToolCall
 
 OpenRouterProviders = Literal[
     "OpenAI",

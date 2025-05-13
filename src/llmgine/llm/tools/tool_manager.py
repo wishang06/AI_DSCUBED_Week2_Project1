@@ -22,10 +22,10 @@ from llmgine.llm.tools.tool_parser import (
     ToolParser,
 )
 from llmgine.llm.tools.tool_register import ToolRegister
+from llmgine.llm.tools.toolCall import ToolCall
 from llmgine.llm.tools.types import (
     AsyncOrSyncToolFunction,
     ModelFormattedDictTool,
-    ToolCall,
 )
 
 
