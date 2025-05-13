@@ -4,12 +4,12 @@ import uuid
 from typing import Any, Dict, List, Optional
 
 from llmgine.bus.bus import MessageBus
+from llmgine.llm import SessionID
 from llmgine.llm.context import ContextManager
 from llmgine.llm.context.context_events import (
     ChatHistoryRetrievedEvent,
     ChatHistoryUpdatedEvent,
 )
-from llmgine.llm.tools.types import SessionID
 
 
 class SimpleChatHistory:

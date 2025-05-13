@@ -9,6 +9,7 @@ import uuid
 from typing import Any, Dict, List, Optional
 
 from llmgine.bus.bus import MessageBus
+from llmgine.llm import AsyncOrSyncToolFunction, ModelFormattedDictTool
 from llmgine.llm.tools.tool import Tool
 from llmgine.llm.tools.tool_events import (
     ToolCompiledEvent,
@@ -22,11 +23,7 @@ from llmgine.llm.tools.tool_parser import (
     ToolParser,
 )
 from llmgine.llm.tools.tool_register import ToolRegister
-from llmgine.llm.tools.types import (
-    AsyncOrSyncToolFunction,
-    ModelFormattedDictTool,
-    ToolCall,
-)
+from llmgine.llm.tools.toolCall import ToolCall
 
 
 class ToolManager:

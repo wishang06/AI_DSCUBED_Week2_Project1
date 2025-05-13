@@ -4,7 +4,7 @@ import asyncio
 from dataclasses import dataclass
 
 from llmgine.bus.bus import MessageBus
-from llmgine.llm.tools.types import SessionID
+from llmgine.llm import SessionID
 from llmgine.messages.commands import Command, CommandResult
 from llmgine.messages.events import Event
 

@@ -3,10 +3,10 @@ from dataclasses import dataclass
 from typing import Optional
 
 from llmgine.bus.bus import MessageBus
+from llmgine.llm import SessionID
 from llmgine.llm.engine.engine import Engine
 from llmgine.llm.models.model import Model
 from llmgine.llm.providers.response import LLMResponse
-from llmgine.llm.tools.types import SessionID
 from llmgine.messages.commands import Command, CommandResult
 from llmgine.messages.events import Event
 

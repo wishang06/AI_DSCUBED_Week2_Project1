@@ -1,20 +1,18 @@
 """OpenAI provider implementation."""
 
-from typing import Any, Dict, List, Literal, Optional, Union
 import uuid
-
-from llmgine.bootstrap import ApplicationConfig
-from llmgine.llm.providers.events import LLMCallEvent, LLMResponseEvent
-from llmgine.llm.providers.providers import Providers
-from openai import AsyncOpenAI
-from openai.types.chat import ChatCompletion
-
-from llmgine.bus.bus import MessageBus
-from llmgine.llm.providers import LLMProvider
-from llmgine.llm.providers.response import LLMResponse, ResponseTokens
-from llmgine.llm.tools.types import ToolCall
+from typing import Any, Dict, List, Literal, Optional, Union
 
 from anthropic import AsyncAnthropic
+from openai.types.chat import ChatCompletion
+
+from llmgine.bootstrap import ApplicationConfig
+from llmgine.bus.bus import MessageBus
+from llmgine.llm.providers import LLMProvider
+from llmgine.llm.providers.events import LLMCallEvent, LLMResponseEvent
+from llmgine.llm.providers.providers import Providers
+from llmgine.llm.providers.response import LLMResponse, ResponseTokens
+from llmgine.llm.tools.toolCall import ToolCall
 
 
 class AnthropicResponse(LLMResponse):
@@ -148,17 +146,30 @@ class AnthropicProvider(LLMProvider):
         # TODO: Implement streaming
         raise NotImplementedError("Streaming is not supported for OpenAI")
 
+
 async def main():
-    import dotenv
     import os
+
+    import dotenv
+
     from llmgine.bootstrap import ApplicationBootstrap
+
     dotenv.load_dotenv(override=True)
     app = ApplicationBootstrap(ApplicationConfig(enable_console_handler=False))
     await app.bootstrap()
-    provider = AnthropicProvider(api_key=os.getenv("ANTHROPIC_API_KEY"), model="claude-3-5-sonnet-20240620")
-    response = await provider.generate(messages=[{"role": "system", "content": "Respond in pirate language"}, {"role": "user", "content": "Hello, how are you?"}])
+    provider = AnthropicProvider(
+        api_key=os.getenv("ANTHROPIC_API_KEY"), model="claude-3-5-sonnet-20240620"
+    )
+    response = await provider.generate(
+        messages=[
+            {"role": "system", "content": "Respond in pirate language"},
+            {"role": "user", "content": "Hello, how are you?"},
+        ]
+    )
     print(response.content)
+
 
 if __name__ == "__main__":
     import asyncio
+
     asyncio.run(main())

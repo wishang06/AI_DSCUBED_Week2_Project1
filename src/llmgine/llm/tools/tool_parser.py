@@ -7,8 +7,8 @@ any LLM.
 from abc import abstractmethod
 from typing import Any
 
+from llmgine.llm import ModelFormattedDictTool
 from llmgine.llm.tools.tool import Tool
-from llmgine.llm.tools.types import ModelFormattedDictTool
 
 
 class ToolParser:
