@@ -6,8 +6,8 @@ import os
 import re
 from typing import Any, Dict, List, Tuple, Type
 
+from llmgine.llm import AsyncOrSyncToolFunction
 from llmgine.llm.tools.tool import Parameter, Tool
-from llmgine.llm.tools.types import AsyncOrSyncToolFunction
 
 logger = logging.getLogger(__name__)
 

@@ -8,12 +8,12 @@ from rich.live import Live
 from rich.spinner import Spinner
 
 from llmgine.bus.bus import AsyncOrSyncCommandHandler, MessageBus
+from llmgine.llm import SessionID
 from llmgine.llm.engine.engine import (
     DummyEngineConfirmationInput,
     DummyEngineStatusUpdate,
     DummyEngineToolResult,
 )
-from llmgine.llm.tools.types import SessionID
 from llmgine.messages.commands import Command, CommandResult
 from llmgine.messages.events import Event
 from llmgine.ui.cli.components import (

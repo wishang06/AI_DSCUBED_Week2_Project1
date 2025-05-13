@@ -8,11 +8,12 @@ import inspect
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
+from types import FrameType
 from typing import Any, Dict, Optional
 
-from llmgine.llm.tools.types import SessionID
+from llmgine.llm import SessionID
 from llmgine.messages.commands import Command, CommandResult
-from types import FrameType
+
 
 @dataclass
 class Event:

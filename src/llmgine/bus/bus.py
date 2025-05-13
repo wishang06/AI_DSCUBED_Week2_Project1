@@ -23,7 +23,7 @@ from typing import (
 
 from llmgine.bus.session import BusSession
 from llmgine.bus.utils import is_async_function
-from llmgine.llm.tools.types import SessionID
+from llmgine.llm import SessionID
 from llmgine.messages.commands import Command, CommandResult
 from llmgine.messages.events import (
     CommandResultEvent,

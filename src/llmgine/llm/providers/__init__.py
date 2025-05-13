@@ -8,13 +8,13 @@ import uuid
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Protocol
 
-from llmgine.llm.providers.response import LLMResponse
-from llmgine.llm.tools.types import (
+from llmgine.llm import (
     ContextType,
     ModelFormattedDictTool,
     ModelNameStr,
-    ToolCall,
 )
+from llmgine.llm.providers.response import LLMResponse
+from llmgine.llm.tools import ToolCall
 
 
 class LLMProvider(Protocol):

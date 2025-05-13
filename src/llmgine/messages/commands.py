@@ -8,9 +8,10 @@ import inspect
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, Optional
 from types import FrameType
-from llmgine.llm.tools.types import SessionID
+from typing import Any, Dict, Optional
+
+from llmgine.llm import SessionID
 
 
 @dataclass
@@ -31,12 +32,6 @@ class Command:
             self.session_id = SessionID("ROOT")
 
 
-
-
-
-
-
-
 @dataclass
 class CommandResult:
     """Result of a command execution."""
@@ -54,7 +49,7 @@ class CommandResult:
 
         tmp: Optional[Any] = inspect.currentframe()
         assert tmp is not None
-        frame : FrameType = tmp.f_back
+        frame: FrameType = tmp.f_back
 
         if frame:
             module = frame.f_globals.get("__name__", "unknown")
