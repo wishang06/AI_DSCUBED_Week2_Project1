@@ -149,3 +149,7 @@ playground/
 
 node_modules/
 *.log
+
+
+gcloud/gmail/credentials.json
+gcloud/gmail/token.json

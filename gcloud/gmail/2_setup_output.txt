@@ -1,0 +1,113 @@
+Welcome to Cloud Shell! Type "help" to get started.
+Your Cloud Platform project in this session is set to darcy-457705.
+Use `gcloud config set project [PROJECT_ID]` to change to a different project.
+ai@cloudshell:~ (darcy-457705)$ # SETUP https://cloud.google.com/pubsub/docs/overview
+
+# AI: This script sets up Google Cloud Pub/Sub for Gmail notifications.
+# AI: It creates a topic and a subscription, and grants Gmail permission to publish.
+# AI: You will need to replace placeholders like YOUR_PROJECT_ID, YOUR_TOPIC_ID, etc.
+# AI: if you choose not to use the interactive prompts.
+
+# AI: Prerequisites:
+# AI: 1. Google Cloud SDK (gcloud) installed and authenticated.
+# AI:    Run 'gcloud auth login' and 'gcloud auth application-default login'.
+# AI: 2. Gmail API enabled for your project (you mentioned it's already enabled).
+# AI: 3. Pub/Sub API enabled for your project. If not, run:
+# AI:    gcloud services enable pubsub.googleapis.com --project=YOUR_PROJECT_ID
+# AI:    (Replace YOUR_PROJECT_ID with your actual project ID)
+
+echo "This script will guide you through setting up Pub/Sub for Gmail API notifications."
+
+# AI: Function to check if a service is enabled
+check_service_enabled() {
+  local service_name="$1"
+  local project_id="$2"
+  local enabled
+  enabled=$(gcloud services list --project="$project_id" --filter="config.name:$service_name" --format="value(state)" 2>/dev/null)
+  if [ "$enabled" = "ENABLED" ]; then
+    return 0 # True
+  else
+    return 1 # False
+  fi
+}
+
+echo "---------------------------------------------------------------------"
+echo "Step 1: Configure Project and Service Account"
+echo "---------------------------------------------------------------------"
+
+# AI: Get Project ID
+current_project=$(gcloud config get-value project 2>/dev/null)
+if [ -z "$current_project" ]; then
+  echo "No default Google Cloud Project ID is set."
+  read -r -p "Please enter your Google Cloud Project ID: " YOUR_PROJECT_ID
+else
+  read -r -p "Enter your Google Cloud Project ID or press Enter to use '$current_project': " user_input_project_id
+  if [ -z "$user_input_project_id" ]; then
+echo "---------------------------------------------------------------------"le-auth-httplib2 google-auth-oauthlib"ogle-auth-oauthlib)."t to work."
+This script will guide you through setting up Pub/Sub for Gmail API notifications.
+---------------------------------------------------------------------
+Step 1: Configure Project and Service Account
+---------------------------------------------------------------------
+Enter your Google Cloud Project ID or press Enter to use 'darcy-457705': 
+Updated property [core/project].
+Using Project ID: darcy-457705
+Checking if Pub/Sub API (pubsub.googleapis.com) is enabled for project darcy-457705...
+Pub/Sub API is already enabled.
+Checking if Gmail API (gmail.googleapis.com) is enabled for project darcy-457705...
+Gmail API is already enabled.
+---------------------------------------------------------------------
+Step 2: Define Pub/Sub Resource Names
+---------------------------------------------------------------------
+Enter a name for your Pub/Sub Topic (e.g., gmail-notifications): gmail-notifications
+Enter a name for your Pub/Sub Subscription (e.g., gmail-subscriber): gmail-subscriber
+---------------------------------------------------------------------
+Step 3: Create Pub/Sub Topic
+---------------------------------------------------------------------
+Creating Pub/Sub topic 'gmail-notifications' in project 'darcy-457705'...
+Topic 'gmail-notifications' already exists.
+---------------------------------------------------------------------
+Step 4: Create Pub/Sub Subscription
+---------------------------------------------------------------------
+Creating Pub/Sub subscription 'gmail-subscriber' for topic 'gmail-notifications'...
+Subscription 'gmail-subscriber' already exists.
+---------------------------------------------------------------------
+Step 5: Grant Gmail Service Account Permission
+---------------------------------------------------------------------
+Fetching project number for darcy-457705...
+Granting Gmail service account 'service-764762401426@gcp-sa-gmail.iam.gserviceaccount.com' the 'roles/pubsub.publisher' role on topic 'gmail-notifications'...
+ERROR: Policy modification failed. For a binding with condition, run "gcloud alpha iam policies lint-condition" to identify issues in condition.
+ERROR: (gcloud.pubsub.topics.add-iam-policy-binding) INVALID_ARGUMENT: Service account service-764762401426@gcp-sa-gmail.iam.gserviceaccount.com does not exist.
+Warning: Failed to grant IAM permission automatically. You might need to do this manually.
+Go to Pub/Sub -> Topics -> gmail-notifications -> Permissions -> Add Principal.
+Principal: service-764762401426@gcp-sa-gmail.iam.gserviceaccount.com, Role: Pub/Sub Publisher.
+IAM permission grant process attempted.
+---------------------------------------------------------------------
+Pub/Sub Setup Potentially Complete!
+---------------------------------------------------------------------
+Summary of created/verified resources:
+  Project ID:         darcy-457705
+  Pub/Sub Topic:      projects/darcy-457705/topics/gmail-notifications
+  Pub/Sub Subscription: projects/darcy-457705/subscriptions/gmail-subscriber
+
+Next critical steps (to be handled by your Python script or manually):
+1. OAuth 2.0 Credentials: Your Python script ('3_gmail_demo_sub_pub.py') will need OAuth 2.0 credentials.
+   - Go to Google Cloud Console -> APIs & Services -> Credentials.
+   - Click 'Create Credentials' -> 'OAuth client ID'.
+   - Select 'Desktop app' (or 'Web application' if appropriate for your final deployment).
+   - Name it (e.g., 'Gmail PubSub Demo Client').
+   - Download the JSON file. Rename it to 'credentials.json' and place it in the same directory as your Python script.
+
+2. Gmail API Watch Request: Your Python script needs to call the Gmail API 'users.watch()' method.
+   This tells Gmail to send notifications for your chosen user's mailbox to your Pub/Sub topic:
+   - Topic Name for watch(): projects/darcy-457705/topics/gmail-notifications
+   The Python script '3_gmail_demo_sub_pub.py' should be designed to handle this.
+
+3. Python Script Configuration: Ensure your '3_gmail_demo_sub_pub.py' script is configured with:
+   - PROJECT_ID: 'darcy-457705'
+   - TOPIC_NAME (for watch): 'gmail-notifications'
+   - SUBSCRIPTION_NAME (for listening): 'gmail-subscriber'
+
+Ensure all necessary Python libraries are installed (e.g., google-cloud-pubsub, google-api-python-client, google-auth-oauthlib).
+Example: pip install google-cloud-pubsub google-api-python-client google-auth-httplib2 google-auth-oauthlib
+---------------------------------------------------------------------
+ai@cloudshell:~ (darcy-457705)$ 

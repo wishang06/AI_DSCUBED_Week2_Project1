@@ -1,6 +1,8 @@
 import os
 import json
-import base64
+# AI: base64 import removed as the code using it is currently commented out.
+# AI: Add 'import base64' back if you uncomment the email body decoding logic.
+# import base64 
 import time
 from typing import List, Dict, Any, Optional, Callable
 
@@ -22,23 +24,24 @@ type PubSubMessage = Any # google.cloud.pubsub_v1.subscriber.message.Message
 # AI: --- Configuration ---
 # AI: Replace with your actual Project ID, Topic name, and Subscription name
 # AI: These should match what you used/got from 1_setup.sh
-GCP_PROJECT_ID: ProjectId = "YOUR_PROJECT_ID"  # e.g., "my-gcp-project-123"
-PUB_SUB_TOPIC_NAME: TopicName = "YOUR_TOPIC_NAME"  # e.g., "gmail-notifications" (just the name, not full path)
-PUB_SUB_SUBSCRIPTION_NAME: SubscriptionName = "YOUR_SUBSCRIPTION_NAME"  # e.g., "gmail-subscriber"
+GCP_PROJECT_ID: ProjectId = "darcy-457705"  # e.g., "my-gcp-project-123"
+PUB_SUB_TOPIC_NAME: TopicName = "gmail-notifications"  # e.g., "gmail-notifications" (just the name, not full path)
+PUB_SUB_SUBSCRIPTION_NAME: SubscriptionName = "gmail-subscriber"  # e.g., "gmail-subscriber"
 
 # AI: List of email IDs you want to monitor for replies
 # AI: Important: This script currently checks the "From" header.
 # AI: If you are looking for replies *to* these emails, the logic in process_email might need adjustment
 # AI: to check "To", "Cc", or "In-Reply-To" / "References" headers.
 TARGET_EMAIL_IDS: List[EmailAddress] = [
-    "specific.sender1@example.com",
-    "another.sender@example.com",
+    "ai@dscubed.org.au",
 ]
 
+FOLDER: str = "gcloud/gmail"
+
 # AI: Path to your OAuth 2.0 credentials JSON file
-CREDENTIALS_FILE: str = "credentials.json"
+CREDENTIALS_FILE: str = f"{FOLDER}/credentials.json"
 # AI: Path to store the token after authorization
-TOKEN_FILE: str = "token.json"
+TOKEN_FILE: str = f"{FOLDER}/token.json"
 
 # AI: Gmail API Scopes.
 # AI: pubsub is for the watch command, gmail.readonly for reading messages.
@@ -80,7 +83,9 @@ def get_gmail_service() -> Optional[Resource]:
                 print("AI: No valid credentials, initiating new OAuth flow...")
                 flow: InstalledAppFlow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS_FILE, SCOPES)
                 # AI: Prefer local server for auth flow if possible
-                creds = flow.run_local_server(port=0)
+                # AI: Using a fixed port (e.g., 8080) for run_local_server
+                # AI: Ensure http://localhost:8080/ is added to your OAuth Client ID's Authorized redirect URIs in Google Cloud Console.
+                creds = flow.run_local_server(port=8080) # AI: Changed from port=0
             except Exception as e:
                 print(f"AI: Error during OAuth flow: {e}")
                 return None
