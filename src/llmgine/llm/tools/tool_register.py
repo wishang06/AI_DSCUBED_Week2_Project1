@@ -4,7 +4,7 @@ import asyncio
 import os
 import importlib
 import logging
-from typing import List, Dict, Union, Optional, Type, Tuple
+from typing import List, Dict, Union, Type, Tuple, Any
 
 from llmgine.llm.tools.tool import Tool, Parameter, ToolFunction, AsyncToolFunction
 
@@ -46,7 +46,7 @@ class ToolRegister:
             platform_list: A list of platform names
         """
 
-        tools = {}
+        tools: Dict[str, Tool] = {}
         for platform in platform_list:
             for function in self._get_functions_for_platform(platform):
                 name, tool = self.register_tool(function)
@@ -64,7 +64,7 @@ class ToolRegister:
         Returns:
             List of tool functions for the platform
         """
-        functions = []
+        functions: List[Union[ToolFunction, AsyncToolFunction]] = []
         platform_tools_dir = os.path.join(os.path.dirname(__file__), "platform_tools")
         
         # Check directory for platform-specific files
@@ -123,7 +123,7 @@ class ToolRegister:
         # Extract parameters from function signature
         sig = inspect.signature(function)
         parameters: List[Parameter] = []
-        param_dict = {}
+        param_dict: Dict[str, str] = {}
 
         # Find the Args section
         args_match = re.search(
@@ -158,7 +158,7 @@ class ToolRegister:
 
             # If the parameter has a description in the Args section, use it
             if param_name in param_dict:
-                param_desc = param_dict[param_name]
+                param_desc: str = param_dict[param_name]
             else:
                 raise ValueError(
                     f"Parameter '{param_name}' has no description in the Args section"
@@ -175,7 +175,7 @@ class ToolRegister:
 
         return parameters
 
-    def _annotation_to_json_type(self, annotation: Type) -> str:
+    def _annotation_to_json_type(self, annotation: Type[Any]) -> str:
         """Convert a Python type annotation to a JSON schema type.
 
         Args:
