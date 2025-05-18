@@ -4,11 +4,14 @@ This module defines commands that can be sent on the message bus.
 Commands represent actions to be performed by the system.
 """
 
-from dataclasses import dataclass, field
-from typing import Any, Dict, Optional
-import uuid
 import inspect
+import uuid
+from dataclasses import dataclass, field
 from datetime import datetime
+from types import FrameType
+from typing import Any, Dict, Optional
+
+from llmgine.llm import SessionID
 
 
 @dataclass
@@ -22,11 +25,11 @@ class Command:
     command_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
     metadata: Dict[str, Any] = field(default_factory=dict)
-    session_id: Optional[str] = None
+    session_id: Optional[SessionID] = None
 
-    def __post_init__(self):
-        if self.session_id is None:
-            self.session_id = "ROOT"
+    def __post_init__(self) -> None:
+        if self.session_id is None:  # TODO  can't this be removed? and use default arg
+            self.session_id = SessionID("ROOT")
 
 
 @dataclass
@@ -39,11 +42,15 @@ class CommandResult:
     result: Optional[Any] = None
     error: Optional[str] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
-    session_id: Optional[str] = None
+    session_id: Optional[SessionID] = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         # Add metadata about where this command was handled
-        frame = inspect.currentframe().f_back
+
+        tmp: Optional[Any] = inspect.currentframe()
+        assert tmp is not None
+        frame: FrameType = tmp.f_back
+
         if frame:
             module = frame.f_globals.get("__name__", "unknown")
             function = frame.f_code.co_name

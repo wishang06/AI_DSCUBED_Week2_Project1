@@ -3,9 +3,10 @@
 import uuid
 from typing import Any, Dict, List, Literal, Optional, Union
 
-from openai import AsyncOpenAI
+from anthropic import AsyncAnthropic
 from openai.types.chat import ChatCompletion
 
+from llmgine.bootstrap import ApplicationConfig
 from llmgine.bus.bus import MessageBus
 from llmgine.llm.providers import LLMProvider
 from llmgine.llm.providers.events import LLMCallEvent, LLMResponseEvent
@@ -14,7 +15,7 @@ from llmgine.llm.providers.response import LLMResponse, ResponseTokens
 from llmgine.llm.tools.toolCall import ToolCall
 
 
-class OpenAIResponse(LLMResponse):
+class AnthropicResponse(LLMResponse):
     def __init__(self, response: ChatCompletion) -> None:
         self.response = response
 
@@ -24,7 +25,7 @@ class OpenAIResponse(LLMResponse):
 
     @property
     def content(self) -> str:
-        return self.response.choices[0].message.content
+        return self.response.content[0].text
 
     @property
     def tool_calls(self) -> List[ToolCall]:
@@ -54,14 +55,13 @@ class OpenAIResponse(LLMResponse):
         return self.response.choices[0].message.reasoning
 
 
-class OpenAIProvider(LLMProvider):
+class AnthropicProvider(LLMProvider):
     def __init__(
         self, api_key: str, model: str, model_component_id: Optional[str] = None
     ) -> None:
         self.model = model
         self.model_component_id = model_component_id
-        self.base_url = "https://api.openai.com/v1"
-        self.client = AsyncOpenAI(api_key=api_key, base_url=self.base_url)
+        self.client = AsyncAnthropic(api_key=api_key)
         self.bus = MessageBus()
 
     async def generate(
@@ -73,7 +73,8 @@ class OpenAIProvider(LLMProvider):
         temperature: Optional[float] = None,
         max_completion_tokens: int = 5068,
         response_format: Optional[Dict] = None,
-        reasoning_effort: Optional[Literal["low", "medium", "high"]] = None,
+        thinking_enabled: bool = False,
+        thinking_budget: Optional[int] = None,
         test: bool = False,
         **kwargs: Any,
     ) -> LLMResponse:
@@ -83,8 +84,13 @@ class OpenAIProvider(LLMProvider):
         payload = {
             "model": self.model,
             "messages": messages,
-            "max_completion_tokens": max_completion_tokens,
+            "max_tokens": max_completion_tokens,
         }
+
+        # System prompt extract
+        if messages[0]["role"] == "system":
+            payload["system"] = messages[0]["content"]
+            payload["messages"] = messages[1:]
 
         if temperature:
             payload["temperature"] = temperature
@@ -101,19 +107,22 @@ class OpenAIProvider(LLMProvider):
         if response_format:
             payload["response_format"] = response_format
 
-        if reasoning_effort:
-            payload["reasoning_effort"] = reasoning_effort
+        if thinking_enabled:
+            payload["thinking"] = {
+                "type": "enabled",
+                "budget": thinking_budget,
+            }
 
         payload.update(**kwargs)
         call_event = LLMCallEvent(
             call_id=call_id,
             model_id=self.model_component_id,
-            provider=Providers.OPENAI,
+            provider=Providers.ANTHROPIC,
             payload=payload,
         )
         await self.bus.publish(call_event)
         try:
-            response = await self.client.chat.completions.create(**payload)
+            response = await self.client.messages.create(**payload)
         except Exception as e:
             await self.bus.publish(
                 LLMResponseEvent(
@@ -131,8 +140,36 @@ class OpenAIProvider(LLMProvider):
         if test:
             return response
         else:
-            return OpenAIResponse(response)
+            return AnthropicResponse(response)
 
     def stream():
         # TODO: Implement streaming
         raise NotImplementedError("Streaming is not supported for OpenAI")
+
+
+async def main():
+    import os
+
+    import dotenv
+
+    from llmgine.bootstrap import ApplicationBootstrap
+
+    dotenv.load_dotenv(override=True)
+    app = ApplicationBootstrap(ApplicationConfig(enable_console_handler=False))
+    await app.bootstrap()
+    provider = AnthropicProvider(
+        api_key=os.getenv("ANTHROPIC_API_KEY"), model="claude-3-5-sonnet-20240620"
+    )
+    response = await provider.generate(
+        messages=[
+            {"role": "system", "content": "Respond in pirate language"},
+            {"role": "user", "content": "Hello, how are you?"},
+        ]
+    )
+    print(response.content)
+
+
+if __name__ == "__main__":
+    import asyncio
+
+    asyncio.run(main())

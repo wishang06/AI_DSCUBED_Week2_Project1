@@ -1,24 +1,15 @@
-from abc import ABC, abstractmethod
 import asyncio
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
-import dataclasses
-from operator import truediv
-from typing import Optional, Type
+from typing import TYPE_CHECKING, Optional
+
 from prompt_toolkit import HTML, PromptSession
-import rich
-from rich.panel import Panel
-from rich.console import Console
-from rich.box import ROUNDED
 from rich import print
-from llmgine.bus.bus import MessageBus
+from rich.panel import Panel
+from rich.prompt import Confirm
+
 from llmgine.messages.commands import Command, CommandResult
 from llmgine.messages.events import Event
-from rich.spinner import Spinner
-from rich.live import Live
-from rich.prompt import Prompt
-from rich.prompt import Confirm
-from typing import TYPE_CHECKING
-
 from llmgine.ui.cli.config import CLIConfig
 
 if TYPE_CHECKING:
@@ -37,11 +28,11 @@ class CLIComponent(ABC):
 
 class CLIPrompt(ABC):
     @abstractmethod
-    def get_input(self, *args, **kwargs):
+    def get_input(self, *args, **kwargs) -> None:
         pass
 
     @abstractmethod
-    def component(self):
+    def component(self) -> None:
         pass
 
 
@@ -199,11 +190,12 @@ class UserGeneralInput(CLIPrompt):
         return cls(UserGeneralInputCommand(prompt=prompt), cli=cli)
 
     def __init__(self, command: Command, cli: "EngineCLI"):
-        self.session = PromptSession()
+        self.session: PromptSession = PromptSession()
         self.prompt = command.prompt
         self.result = None
         self.cli = cli
 
+    # TODO types
     async def get_input(self):
         print(
             Panel(
@@ -247,7 +239,7 @@ class YesNoPrompt(CLIPrompt):
     Command must have property prompt.
     """
 
-    def __init__(self, command: Command):
+    def __init__(self, command: EngineResultCommandResult):
         self.prompt = command.prompt
         self.result = None
 
@@ -268,17 +260,19 @@ class YesNoPrompt(CLIPrompt):
             return user_input
 
     @property
-    def component(self):
+    def component(self) -> None:
         return None
 
-    def attach_cli(self, cli: "EngineCLI"):
+    def attach_cli(self, cli: "EngineCLI") -> None:
         self.cli = None
+
 
 @dataclass
 class SelectPromptCommand(Command):
     prompt: str = ""
     option_number: int = 0
     title: str = ""
+
 
 class SelectPrompt(CLIPrompt):
     """
@@ -288,13 +282,13 @@ class SelectPrompt(CLIPrompt):
     def __init__(self, command: Command):
         self.title = command.title
         self.prompt = command.prompt
-    
+
     async def get_input(self):
         print(
             Panel(
                 self.prompt,
                 title=f"[bold green]{self.title}[/bold green]",
-                subtitle=f"[green]Input a number...[/green]",
+                subtitle="[green]Input a number...[/green]",
                 title_align="left",
                 width=CLIConfig().max_width,
                 style="green",

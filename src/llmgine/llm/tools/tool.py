@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Any, Dict, List
 
-from llmgine.llm.tools.types import AsyncOrSyncToolFunction
+from llmgine.llm import AsyncOrSyncToolFunction
 
 
 @dataclass
@@ -49,7 +49,6 @@ class Tool:
 
     name: str
     description: str
-    parameters: List[Parameter]
     parameters: List[Parameter]
     function: AsyncOrSyncToolFunction
     is_async: bool = False

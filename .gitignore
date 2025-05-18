@@ -150,8 +150,14 @@ playground/
 node_modules/
 *.log
 
+
 /programs/Audio2Text/audio
 /programs/Audio2Text/transcribed_audio
 
 *credentials.json
 *token.json
+
+
+gcloud/gmail/credentials.json
+gcloud/gmail/token.json
+

@@ -6,10 +6,12 @@ from dataclasses import dataclass, field
 from typing import Dict, Any, List
 
 from llmgine.messages.events import Event
-
+#from llmgine.llm.tools.types import SessionID
 
 @dataclass
 class ToolManagerEvent(Event):
+    
+    # TODO idk about this
     tool_manager_id: str = field(default_factory=str)
     engine_id: str = field(default_factory=str)
     session_id: str = field(default_factory=str)
