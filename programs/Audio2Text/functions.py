@@ -1,10 +1,9 @@
 import datetime
 import os
-import sys
 import dotenv
 import requests
 import json
-from typing import List, Optional, Dict, Any, Set
+from typing import List, Optional, Dict, Any, Set, Tuple
 from collections import defaultdict as dd
 
 dotenv.load_dotenv()
@@ -178,7 +177,7 @@ def build_file_name(num : int, audio_file: str, step: str, time : bool = True) -
     else:
         return "/" + str(num) + "_" + audio_file.split('.')[0] + "_" + step + ".json"
 
-def process_audio(audio_file: str, num_speakers: str) -> str:
+def process_audio(audio_file: str, num_speakers: str) -> Tuple[Dict[str, List[str]], str]:
     """
     Process the audio file and return the conversation.
 
@@ -187,14 +186,13 @@ def process_audio(audio_file: str, num_speakers: str) -> str:
         num_speakers: The number of speakers in the audio file
 
     Returns:
-        List[Dict[str, Any]]: The conversation
+        Tuple[str, str]: The conversation and the path to the audio file
     """
 
     if not num_speakers.isdigit():
-        return "num_speakers must be an integer"
+        return {}, "num_speakers must be an integer"
     
     num_speakers_int = int(num_speakers)
-    print(f"Transcribing audio file: {audio_file} with {num_speakers_int} speakers")
 
     # 1. Get the directory where the script is located
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -208,14 +206,18 @@ def process_audio(audio_file: str, num_speakers: str) -> str:
 
     # Check if the file exists
     if not os.path.exists(audio_file_path):
-        return f"Audio file not found at: {audio_file_path}. Make sure the file is in the audio folder."
+        return {}, f"Audio file not found at: {audio_file_path}. Make sure the file is in the audio folder."
         
     # ----------------------------------------
     # 2. Get the transcription and write it to a file
     # ----------------------------------------
-    #result : Dict[str, Any] = transcribe(audio_file_path, num_speakers_int)
-    with open(transcribed_file_dir + "/1_KFC_raw_transcript_2025-05-15_18-22-08.json", "r") as f:
-        result = json.load(f)
+    # Check if the transcription file exists
+    if os.path.exists(transcribed_file_dir + '/' + audio_file.split('.')[0] + "_raw_transcript.json"):
+        with open(transcribed_file_dir + '/' + audio_file.split('.')[0] + "_raw_transcript.json", "r") as f:
+            result = json.load(f)
+    else:
+        return {}, "Transcription file not found"
+        result : Dict[str, Any] = transcribe(audio_file_path, num_speakers_int)
 
     with open(new_dir + build_file_name(1, audio_file, "raw_transcript"), "w") as f:
         json.dump(result, f, indent=2)
@@ -233,7 +235,9 @@ def process_audio(audio_file: str, num_speakers: str) -> str:
     # ----------------------------------------
     cleaned_conversation = cleanup_conversation(conversation)
 
-    with open(new_dir + build_file_name(3, audio_file, "parsed_conversation"), "w") as f:
+    # To be returned later
+    audio_file_path = new_dir + build_file_name(3, audio_file, "parsed_conversation")
+    with open(audio_file_path, "w") as f:
         json.dump(cleaned_conversation, f, indent=2)
 
     # ----------------------------------------
@@ -242,33 +246,61 @@ def process_audio(audio_file: str, num_speakers: str) -> str:
     snippet = get_conversation_snippet(cleaned_conversation)
     with open(new_dir + build_file_name(4, audio_file, "speaker_snippet"), "w") as f:
         json.dump(snippet, f, indent=2)
+    
+    return snippet, audio_file_path
 
-    return str(snippet)
-
-def merge_speakers(first_speaker_id: str, second_speaker_id: str) -> str:
+def merge_speakers(speakers_to_merge: str) -> str:
     """
     Merge two speakers in the conversation. They may be the same speaker.
 
     Args:
-        first_speaker_id: The id of the first speaker
-        second_speaker_id: The id of the second speaker
+        speakers_to_merge: A list of the ids of the speakers to merge, separated by commas.
 
     Returns:
         str: Result of the merge
     """
-    # TODO: Implement the merge
 
-    return "Merged: " + first_speaker_id + " and " + second_speaker_id
+    return ""
 
-if __name__ == "__main__":
-    # 1. Get the audio file from the command line
-    if len(sys.argv) < 3:
-        print("Please provide an audio file and the number of speakers as arguments")
-        sys.exit(1)
-    audio_file = sys.argv[1]
-    num_speakers = sys.argv[2]
-    if not num_speakers.isdigit():
-        print("Enter number of speakers as second argument")
-        sys.exit(1)
+def merge_speakers_engine(audio_file: str, speakers_to_merge: str) -> str:
+    """
+    Merge two speakers in the conversation. They may be the same speaker.
+    Do not call this function directly.
 
-    process_audio(audio_file, num_speakers)
+    Args:
+        audio_file: The path to the audio file (hidden from the llm)
+        speakers_to_merge: A list of the ids of the speakers to merge, separated by commas.
+
+    Returns:
+        str: Result of the merge
+    """
+    speakers_to_merge_list = speakers_to_merge.split(",")
+
+    if len(speakers_to_merge_list) == 1:
+        return "No merge is required for " + str(speakers_to_merge_list[0]) + "\n"
+    
+    # Load the conversation
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    # Construct the path to the audio file
+    audio_file_path = os.path.join(script_dir, "transcribed_audio", audio_file)
+    with open(audio_file_path, "r") as f:
+        conversation = json.load(f)
+
+    # Create a dictionary to store the merged speakers
+    merged_speakers : Dict[str, str] = {}
+    for speaker in speakers_to_merge_list:
+        merged_speakers[speaker] = speakers_to_merge_list[0]
+
+    for message in conversation:
+        if message["speaker"] in merged_speakers:
+            message["speaker"] = merged_speakers[message["speaker"]]
+
+    # Write the merged conversation to a new file
+    new_file_path = audio_file_path.split(".")[0] + "_merged.json"
+    with open(new_file_path, "w") as f:
+        json.dump(conversation, f, indent=2)
+
+    return "Merged: " + str(speakers_to_merge_list[1:]) + " into " + str(speakers_to_merge_list[0]) + "\n"
+
+# print(merge_speakers_engine("KFC_2025-05-18_11-49-18/3_KFC_parsed_conversation_2025-05-18_11-49-18.json", 'speaker_1,speaker_2'))
+# print(process_audio("KFC.m4a", "2"))

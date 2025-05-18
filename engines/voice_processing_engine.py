@@ -9,14 +9,14 @@ To delete a fact, construct the content as follows:
 <DELETE_FACT><fact>
 """
 
-from dataclasses import dataclass
 from typing import Optional
 import uuid
 import json
+from dataclasses import dataclass
 
 from llmgine.llm.engine.engine import Engine
 from llmgine.llm.models.model import Model
-from llmgine.messages.commands import Command, CommandResult
+from llmgine.messages.commands import CommandResult, Command
 from llmgine.bus.bus import MessageBus
 from llmgine.messages.events import Event
 from llmgine.llm.tools.tool_manager import ToolManager
@@ -26,27 +26,24 @@ from llmgine.llm.context.memory import SimpleChatHistory
 from llmgine.llm.tools import ToolCall, Tool
 from llmgine.ui.cli.voice_processing_engine_cli import SpecificPrompt, SpecificComponent, SpecificPromptCommand, SpecificComponentEvent
 
-from programs.Audio2Text.transcribe import process_audio
-from programs.Audio2Text.transcribe import merge_speakers
+from programs.Audio2Text import process_audio, merge_speakers, merge_speakers_engine
 
 SYSTEM_PROMPT = f'You are a voice processing engine. You are provided with the number of speakers inside the conversation, '\
 f'and a snippet of what each speaker said in the conversation. '\
 f'The number of speakers present in the snippet will be greater than the actual number of speakers in the conversation. '\
 f'Your task is to decide which speakers in the snippet should be merged into a single speaker, based on the context, speaking style, '\
-f'and the content of what they said. '\
+f'and the content of what they said. Make sure the number of speakers after merge is the same as the actual number of speakers in the conversation. '\
+f'If you think speaker_1 and speaker_2 are actually one person, speaker_3 and speaker_4 are one person: '\
+f'example function call: merge_speakers("speaker_1,speaker_2") ; merge_speakers("speaker_3,speaker_4")'
 
-
-# ----------------------------------CUSTOM DATACLASSES-----------------------------------
 
 @dataclass
 class VoiceProcessingEngineCommand(Command):
     prompt: str = ""
 
-
 @dataclass
 class VoiceProcessingEngineStatusEvent(Event):
-    status: str = ""
-
+    status: str = "" 
 
 @dataclass
 class VoiceProcessingEngineToolResultEvent(Event):
@@ -62,7 +59,7 @@ class VoiceProcessingEngine(Engine):
         self,
         model: Model,
         system_prompt: Optional[str] = None,
-        session_id: Optional[str] = None,
+        session_id: str = "test",
     ):
         self.model = model
         self.system_prompt = system_prompt
@@ -91,16 +88,19 @@ class VoiceProcessingEngine(Engine):
         try:
             # Process the audio file and get the snippet
             audio_file, number_of_speakers = command.prompt.split("&")
-            snippet = process_audio(audio_file, number_of_speakers)
+            snippet, audio_file_path = process_audio(audio_file, number_of_speakers)
+            self.audio_file_path = audio_file_path
+
+            if len(snippet) == int(number_of_speakers):
+                return CommandResult(success=True, result="No merge is required.")
+
             # Prompt the LLM with the actual number of speakers and the snippet
-            prompt = "Actual Number of speakers: " + number_of_speakers + ".\nHere is the snippet of what each speaker said in the conversation: " + snippet
+            prompt = "Actual Number of speakers: " + number_of_speakers + ".\nHere is the snippet of what each speaker said in the conversation: " + str(snippet)
             result = await self.execute(prompt=prompt)
             
             return CommandResult(success=True, result=result)
         except Exception as e:
             return CommandResult(success=False, error=str(e))
-
-
 
     async def execute(self, prompt: str) -> str:
         """This function executes the engine.
@@ -124,7 +124,7 @@ class VoiceProcessingEngine(Engine):
             )
             # Generate the response
             response = await self.llm_manager.generate(
-                messages=current_context, tools=tools
+                messages=current_context, tools=tools, tool_choice="auto"
             )
             # Get the response message
             response_message = response.raw.choices[0].message
@@ -156,11 +156,12 @@ class VoiceProcessingEngine(Engine):
                         )
                     )                
                     
-                    # Message bus is hidden from the llm, insert it here manually
-                    if tool_call.function.name == "send_to_judge" or tool_call.function.name == "deletion_confirmation":
+                    # Insert audio file path here manually
+                    if tool_call.function.name == "merge_speakers":
                         args = json.loads(tool_call.function.arguments)
-                        args["session_id"] = self.session_id
+                        args["audio_file"] = self.audio_file_path
                         tool_call_obj.arguments = json.dumps(args)
+                        tool_call_obj.name = "merge_speakers_engine"
                         
                     result = await self.tool_manager.execute_tool_call(tool_call_obj)
 
@@ -234,6 +235,7 @@ async def main():
 
     # Register tools
     await engine.register_tool(merge_speakers)
+    await engine.register_tool(merge_speakers_engine)
 
     await cli.main()
 
