@@ -10,3 +10,11 @@ gcloud auth login
 and then
 
 python3 "gcloud/gmail/3_gmail_demo_sub_pub.py"
+
+
+
+
+FROM SCRATCH
+
+YOU NEED TO RUN SETUP.SH 
+there are some issues with the original script and we use a new email now but should be fine
