@@ -1,0 +1,12 @@
+
+use
+
+ai@dscubed email
+
+run
+
+gcloud auth login
+
+and then
+
+python3 "gcloud/gmail/3_gmail_demo_sub_pub.py"
