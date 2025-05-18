@@ -134,16 +134,55 @@ else
 fi
 
 echo "Granting Gmail service account '$GMAIL_SERVICE_ACCOUNT_TO_GRANT' the 'roles/pubsub.publisher' role on topic '$YOUR_TOPIC_ID'..."
-gcloud pubsub topics add-iam-policy-binding "$YOUR_TOPIC_ID" \
+# AI : Attempt to grant IAM permission and provide specific feedback based on success or failure.
+if gcloud pubsub topics add-iam-policy-binding "$YOUR_TOPIC_ID" \
     --member="serviceAccount:${GMAIL_SERVICE_ACCOUNT_TO_GRANT}" \
     --role="roles/pubsub.publisher" \
-    --project="$YOUR_PROJECT_ID"
-if [ $? -ne 0 ]; then
-  echo "Warning: Failed to grant IAM permission automatically. You might need to do this manually."
-  echo "Go to Pub/Sub -> Topics -> $YOUR_TOPIC_ID -> Permissions -> Add Principal."
-  echo "Principal: $GMAIL_SERVICE_ACCOUNT_TO_GRANT, Role: Pub/Sub Publisher."
+    --project="$YOUR_PROJECT_ID"; then
+  # AI: The gcloud command above will print its own success message (e.g., "Updated IAM policy...").
+  # AI: We add a script-specific confirmation.
+  echo "Successfully processed IAM permission grant for '$GMAIL_SERVICE_ACCOUNT_TO_GRANT' on topic '$YOUR_TOPIC_ID'."
+else
+  # AI : The gcloud command failed. It will print its own error message (e.g., service account not found).
+  # AI : Below, we provide the detailed explanation and next steps from the script's perspective.
+  echo "" # AI : Add a newline for better readability before the big box.
+  echo "################################ IMPORTANT ################################"
+  echo "# Error: The command to grant IAM permission to '$GMAIL_SERVICE_ACCOUNT_TO_GRANT' likely FAILED."
+  echo "# The gcloud command output directly above this message should indicate the specific error."
+  echo "#"
+  echo "# If the error indicates the service account does not exist (common scenario):"
+  echo "# This is often because this specific Gmail service account"
+  echo "# (typically 'service-YOUR_PROJECT_NUMBER@gcp-sa-gmail.iam.gserviceaccount.com', where YOUR_PROJECT_NUMBER would be for project '$YOUR_PROJECT_ID')"
+  echo "# is only automatically created by Google AFTER the first successful 'users.watch()' API call"
+  echo "# is made for this project."
+  echo "#"
+  echo "# NEXT STEPS (if service account did not exist):"
+  echo "# 1. Proceed to configure and run your Python script (e.g., '3_gmail_demo_sub_pub.py') which should call 'users.watch()'."
+  echo "# 2. Once 'users.watch()' has been successfully called at least once for any user in project '$YOUR_PROJECT_ID',"
+  echo "#    the service account '$GMAIL_SERVICE_ACCOUNT_TO_GRANT' should then exist."
+  echo "# 3. You will then need to grant it the 'Pub/Sub Publisher' role on topic '$YOUR_TOPIC_ID'."
+  echo "#    You can do this manually in the Google Cloud Console:"
+  echo "#    - Go to: Pub/Sub -> Topics -> '$YOUR_TOPIC_ID'"
+  echo "#    - Click on the 'PERMISSIONS' tab (you might need to click 'SHOW INFO PANEL' on the right if it's not visible)."
+  echo "#    - Click 'ADD PRINCIPAL'."
+  echo "#    - New principals: $GMAIL_SERVICE_ACCOUNT_TO_GRANT"
+  echo "#    - Role: Pub/Sub Publisher (Select from dropdown: Pub/Sub -> Pub/Sub Publisher or use role ID 'roles/pubsub.publisher')"
+  echo "#    - Click 'SAVE'."
+  echo "#"
+  echo "# Alternatively, after 'users.watch()' has successfully run and the service account exists,"
+  echo "# you can try re-running the following command in your Cloud Shell (ensure variables are set or replaced):"
+  echo "# ---"
+  echo "# gcloud pubsub topics add-iam-policy-binding \"$YOUR_TOPIC_ID\" \\"
+  echo "#     --member=\"serviceAccount:${GMAIL_SERVICE_ACCOUNT_TO_GRANT}\" \\"
+  echo "#     --role=\"roles/pubsub.publisher\" \\"
+  echo "#     --project=\"$YOUR_PROJECT_ID\""
+  echo "# ---"
+  echo "######################################################################"
+  echo "" # AI : Add a newline after the big box.
+  echo "IAM permission grant for '$GMAIL_SERVICE_ACCOUNT_TO_GRANT' on topic '$YOUR_TOPIC_ID' requires manual follow-up as detailed above."
+  echo "This step in the script encountered an issue, likely because the service account does not exist yet."
+  echo "Please ensure your application's 'users.watch()' call is made successfully, then apply the IAM binding manually or by re-running the command."
 fi
-echo "IAM permission grant process attempted."
 
 
 echo "---------------------------------------------------------------------"
