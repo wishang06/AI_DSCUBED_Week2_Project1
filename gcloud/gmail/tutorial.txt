@@ -24,3 +24,6 @@ FROM SCRATCH
 
 YOU NEED TO RUN SETUP.SH
 there are some issues with the original script and we use a new email now but should be fine
+
+
+you need to add token.json and credentials.json to the sub directory btwg
