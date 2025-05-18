@@ -24,5 +24,5 @@ class CLIConfig(Singleton):
 
     # Add your configuration fields here
     max_width: int = 9999
-    padding: tuple = (1, 2)
+    padding: tuple[int, int] = (1, 2)
     vi_mode: bool = True

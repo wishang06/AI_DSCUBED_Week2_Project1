@@ -135,7 +135,7 @@ class ToolRegister:
         # Extract parameters from function signature
         sig = inspect.signature(function)
         parameters: List[Parameter] = []
-        param_dict = {}
+        param_dict: Dict[str, str] = {}
 
         # Find the Args section
         args_match = re.search(
