@@ -7,6 +7,10 @@ run
 
 gcloud auth login
 
+make sure project is 
+
+  Your current project is [darcy-457705]
+
 and then
 
 python3 "gcloud/gmail/3_gmail_demo_sub_pub.py"
