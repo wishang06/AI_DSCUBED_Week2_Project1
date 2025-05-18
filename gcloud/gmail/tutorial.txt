@@ -7,7 +7,7 @@ run
 
 gcloud auth login
 
-make sure project is 
+make sure project is
 
   Your current project is [darcy-457705]
 
@@ -16,9 +16,11 @@ and then
 python3 "gcloud/gmail/3_gmail_demo_sub_pub.py"
 
 
+try gcloud auth application-default login if that doesn't work
+
 
 
 FROM SCRATCH
 
-YOU NEED TO RUN SETUP.SH 
+YOU NEED TO RUN SETUP.SH
 there are some issues with the original script and we use a new email now but should be fine
