@@ -24,20 +24,20 @@ from llmgine.llm.tools.tool_parser import (
 )
 from llmgine.llm.tools.tool_register import ToolRegister
 from llmgine.llm.tools.toolCall import ToolCall
-
+from llmgine.llm import SessionID
 
 class ToolManager:
     """Manages tool registration and execution."""
 
     def __init__(
-        self, engine_id: str, session_id: str, llm_model_name: Optional[str] = None
+        self, engine_id: str, session_id: SessionID, llm_model_name: Optional[str] = None
     ):
         """Initialize the tool manager."""
         self.tool_manager_id = str(uuid.uuid4())
         self.engine_id: str = engine_id  # TODO make type
-        self.session_id: str = session_id  # TODO amke type
+        self.session_id: SessionID = session_id
         self.message_bus: MessageBus = MessageBus()
-        self.tools: Dict[str, Tool] = {}
+        self.tools: dict[str, Tool] = {}
         self.__tool_parser: ToolParser = self._get_parser(llm_model_name)
         self.__tool_register: ToolRegister = ToolRegister()
 
@@ -86,7 +86,7 @@ class ToolManager:
                 )
             )
 
-    async def get_tools(self) -> List[ModelFormattedDictTool]:
+    async def get_tools(self) -> list[ModelFormattedDictTool]:
         """Get all registered tools from the tool register.
 
         Returns:
@@ -111,7 +111,7 @@ class ToolManager:
 
         return ret
 
-    async def execute_tool_call(self, tool_call: ToolCall) -> Optional[dict[str, Any]]:
+    async def execute_tool_call(self, tool_call: ToolCall) -> Optional[Any]:
         """Execute a tool from a ToolCall object.
 
         Args:
@@ -123,17 +123,18 @@ class ToolManager:
         Raises:
             ValueError: If the tool is not found
         """
-        tool_name = tool_call.name
+        tool_name : str = tool_call.name
 
         try:
-            # Parse arguments
-            arguments = json.loads(tool_call.arguments)
+              # Parse arguments
+            arguments : dict[str, Any] = json.loads(tool_call.arguments)
+            assert isinstance(arguments, dict)
             return await self.__execute_tool(tool_name, arguments)
         except json.JSONDecodeError as e:
-            error_msg = f"Invalid JSON arguments for tool {tool_name}: {e}"
+            error_msg : str = f"Invalid JSON arguments for tool {tool_name}: {e}"
             raise ValueError(error_msg) from e
 
-    async def __execute_tool(self, tool_name: str, arguments: Dict[str, Any]) -> Any:
+    async def __execute_tool(self, tool_name: str, arguments: dict[str, Any]) -> Any:
         """Execute a tool with the given arguments.
 
         Args:
@@ -147,10 +148,10 @@ class ToolManager:
             ValueError: If the tool is not found
         """
         if tool_name not in self.tools:
-            error_msg = f"Tool not found: {tool_name}"
+            error_msg : str = f"Tool not found: {tool_name}"
             raise ValueError(error_msg)
 
-        tool = self.tools[tool_name]
+        tool : Tool = self.tools[tool_name]
 
         try:
             # Call the tool function with the provided arguments

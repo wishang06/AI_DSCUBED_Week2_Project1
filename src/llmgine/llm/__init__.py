@@ -1,5 +1,5 @@
 import asyncio
-from typing import Any, Callable, Dict, List, NewType, Union
+from typing import Any, Callable, Dict, List, NewType, Union, Literal
 
 # TODO use _type
 
@@ -17,3 +17,6 @@ ModelNameStr = NewType("ModelNameStr", str)
 
 
 SessionID = NewType("SessionID", str)
+
+ToolChoiceType = Literal["auto", "none", "required"]  # TODO an enum would be better, otherwise "none" will have lots of search collisions
+ToolChoiceOrDictType = Union[ToolChoiceType, Dict[str, Any]] # TODO this Dict[str, Any] might be ModelFormattedDictTool? # TODO could rename

@@ -12,7 +12,7 @@ from llmgine.llm.providers.events import LLMCallEvent, LLMResponseEvent
 from llmgine.llm.providers.providers import Providers
 from llmgine.llm.providers.response import LLMResponse, ResponseTokens
 from llmgine.llm.tools.toolCall import ToolCall
-
+from llmgine.llm import ToolChoiceOrDictType
 
 class OpenAIResponse(LLMResponse):
     def __init__(self, response: ChatCompletion) -> None:
@@ -68,7 +68,7 @@ class OpenAIProvider(LLMProvider):
         self,
         messages: List[Dict],
         tools: Optional[List[Dict]] = None,
-        tool_choice: Union[Literal["auto", "none", "required"], Dict] = "auto",
+        tool_choice: ToolChoiceOrDictType = "auto",
         parallel_tool_calls: Optional[bool] = None,
         temperature: Optional[float] = None,
         max_completion_tokens: int = 5068,

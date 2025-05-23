@@ -12,6 +12,7 @@ from llmgine.llm.providers import Providers
 from llmgine.llm.providers.providers import Provider
 from llmgine.llm.providers.response import LLMResponse
 import instructor
+from llmgine.llm import ToolChoiceOrDictType
 
 dotenv.load_dotenv()
 
@@ -44,7 +45,7 @@ class Claude35Haiku:
         self,   
         messages: List[Dict],
         tools: Optional[List[Dict]] = None,
-        tool_choice: Union[Literal["auto", "none", "required"], Dict] = "auto",
+        tool_choice: ToolChoiceOrDictType = "auto",
         temperature: float = 0.7,
         max_completion_tokens: int = 5068,
         response_format: Optional[Dict] = None,
@@ -87,7 +88,7 @@ class HowAmI(BaseModel):
     emotion: str
     reason: str
 
-async def main():
+async def main() -> None:
     import asyncio
     from llmgine.bootstrap import ApplicationBootstrap
     app = ApplicationBootstrap(ApplicationConfig(enable_console_handler=False))

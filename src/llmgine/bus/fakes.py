@@ -22,7 +22,7 @@ class FakeMessageBus:
     _instance = None
 
     @classmethod
-    def get_instance(cls):
+    def get_instance(cls) -> "FakeMessageBus":
         """Get the singleton instance of FakeMessageBus.
 
         Returns:
@@ -49,30 +49,30 @@ class FakeMessageBus:
         FakeMessageBus._instance = self
 
     @classmethod
-    def reset_instance(cls):
+    def reset_instance(cls) -> None:
         """Reset the singleton instance.
 
         This is useful for testing when you want to start with a fresh instance.
         """
         cls._instance = None
 
-    async def start(self):
+    async def start(self) -> None:
         """Start the fake message bus (no-op)."""
         pass
 
-    async def stop(self):
+    async def stop(self) -> None:
         """Stop the fake message bus (no-op)."""
         pass
 
-    def register_command_handler(self, command_type, handler):
+    def register_command_handler(self, command_type, handler) -> None:
         """Register a command handler for testing."""
         self._command_handlers[command_type] = handler
 
-    def register_async_command_handler(self, command_type, handler):
+    def register_async_command_handler(self, command_type, handler) -> None:
         """Register an async command handler for testing."""
         self._command_handlers[command_type] = handler
 
-    def register_event_handler(self, event_type, handler):
+    def register_event_handler(self, event_type, handler) -> None:
         """Register an event handler for testing."""
         if event_type not in self._event_handlers:
             self._event_handlers[event_type] = []
@@ -103,7 +103,7 @@ class FakeMessageBus:
         # Default success result
         return CommandResult(success=True)
 
-    async def publish(self, event):
+    async def publish(self, event: Event) -> None:
         """Publish an event to the fake bus.
 
         Records the event and calls any registered handlers.
@@ -111,7 +111,7 @@ class FakeMessageBus:
         self.published_events.append(event)
 
         event_type = type(event)
-        if event_type in self._event_handlers:
+        if event_type in self._event_handlers: # TODO .keys() might be more explicit
             for handler in self._event_handlers[event_type]:
                 result = handler(event)
                 # Handle both sync and async handlers

@@ -26,8 +26,13 @@ from llmgine.llm.models.model import Model
 from llmgine.llm.providers.openai_provider import OpenAIResponse, OpenAIProvider
 from llmgine.llm.providers.openrouter import OpenRouterProvider
 from llmgine.llm.providers import Providers
+from llmgine.llm.tools.tool_parser import ModelFormattedDictTool
+from llmgine.llm import ToolChoiceOrDictType
 
 dotenv.load_dotenv(override=True)
+
+
+
 
 
 class Gpt41Mini:
@@ -37,8 +42,10 @@ class Gpt41Mini:
 
     def __init__(self, provider: Providers) -> None:
         self.generate = None
-        self.model = "gpt-4.1-mini-2025-04-14"
-        self.api_key = os.getenv("OPENAI_API_KEY")
+        self.model : str = "gpt-4.1-mini-2025-04-14"
+        self.api_key : str = os.getenv("OPENAI_API_KEY")
+        assert self.api_key is not None, "OPENAI_API_KEY is not set"
+
         self.provider = self.__getProvider(provider)
 
     def __getProvider(self, provider: Providers) -> OpenAIProvider:
@@ -56,13 +63,13 @@ class Gpt41Mini:
 
     def _generate_openai(
         self,
-        messages: List[Dict],
-        tools: Optional[List[Dict]] = None,
-        tool_choice: Union[Literal["auto", "none", "required"], Dict] = "auto",
+        messages: List[Dict[str, Any]],
+        tools: Optional[List[ModelFormattedDictTool]] = None, # TODO should this be an optional? an empty list by default would make more sense
+        tool_choice: ToolChoiceOrDictType = "auto", 
         parallel_tool_calls: Optional[bool] = None,
         temperature: Optional[float] = None,
         max_completion_tokens: int = 5068,
-        response_format: Optional[Dict] = None,
+        response_format: Optional[Dict[str, Any]] = None,
         test: bool = False,
         **kwargs: Any,
     ) -> OpenAIResponse:
@@ -70,7 +77,7 @@ class Gpt41Mini:
         This method will hardcode a group of default parameters for the OpenAI provider for the GPT-4o Mini model.
         """
         # Update the parameters with the ones provided in the kwargs.
-        return self.provider.generate(
+        tmp = self.provider.generate(
             messages=messages,
             temperature=temperature,
             tools=tools,
@@ -82,16 +89,18 @@ class Gpt41Mini:
             test=test,
             **kwargs,
         )
+        assert isinstance(tmp, OpenAIResponse), "tmp is not an OpenAIResponse"
+        return tmp
 
     def _generate_openrouter(
         self,
-        messages: List[Dict],
-        tools: Optional[List[Dict]] = None,
-        tool_choice: Union[Literal["auto", "none", "required"], Dict] = "auto",
+        messages: List[Dict[str, Any]],
+        tools: Optional[List[ModelFormattedDictTool]] = None,
+        tool_choice: ToolChoiceOrDictType = "auto",
         parallel_tool_calls: Optional[bool] = None,
         temperature: Optional[float] = None,
         max_completion_tokens: int = 5068,
-        response_format: Optional[Dict] = None,
+        response_format: Optional[Dict[str, Any]] = None,
         reasoning_effort: Optional[Literal["low", "medium", "high"]] = None,
         test: bool = False,
         **kwargs: Any,
@@ -99,7 +108,7 @@ class Gpt41Mini:
         """
         This method will construct a default group of parameters for the OpenRouter provider.
         """
-        return self.provider.generate(
+        tmp = self.provider.generate(
             messages=messages,
             temperature=temperature,
             tools=tools,
@@ -110,6 +119,8 @@ class Gpt41Mini:
             test=test,
             **kwargs,
         )
+        assert isinstance(tmp, OpenAIResponse), "tmp is not an OpenAIResponse"
+        return tmp
 
 
 class Gpt_4o_Mini_Latest:
@@ -119,9 +130,9 @@ class Gpt_4o_Mini_Latest:
 
     def __init__(self, provider: Providers, engine_id: Optional[str] = None) -> None:
         self.generate = None
-        self.api_key = os.getenv("OPENAI_API_KEY")
-        self.model = "gpt-4o-mini"
-        self.provider = self.__getProvider(provider)
+        self.api_key : str = os.getenv("OPENAI_API_KEY")
+        self.model : str = "gpt-4o-mini"
+        self.provider  = self.__getProvider(provider)
         self.engine_id = engine_id
 
     def __getProvider(self, provider: Providers) -> OpenAIProvider:
@@ -139,13 +150,13 @@ class Gpt_4o_Mini_Latest:
 
     def __generate_openai(
         self,
-        messages: List[Dict],
-        tools: Optional[List[Dict]] = None,
-        tool_choice: Union[Literal["auto", "none", "required"], Dict] = "auto",
+        messages: List[Dict[str, Any]],
+        tools: Optional[List[ModelFormattedDictTool]] = None,
+        tool_choice: ToolChoiceOrDictType = "auto",
         parallel_tool_calls: Optional[bool] = None,
         temperature: Optional[float] = None,
         max_completion_tokens: int = 5068,
-        response_format: Optional[Dict] = None,
+        response_format: Optional[Dict[str, Any]] = None,
         reasoning_effort: Optional[Literal["low", "medium", "high"]] = None,
         test: bool = False,
         **kwargs: Any,
@@ -154,7 +165,7 @@ class Gpt_4o_Mini_Latest:
         This method will hardcode a group of default parameters for the OpenAI provider for the GPT-4o Mini model.
         """
         # Update the parameters with the ones provided in the kwargs.
-        return self.provider.generate(
+        tmp = self.provider.generate(
             messages=messages,
             temperature=temperature,
             tools=tools,
@@ -166,16 +177,18 @@ class Gpt_4o_Mini_Latest:
             test=test,
             **kwargs,
         )
+        assert isinstance(tmp, OpenAIResponse), "tmp is not an OpenAIResponse"
+        return tmp
 
     def __generate_openrouter(
         self,
-        messages: List[Dict],
-        tools: Optional[List[Dict]] = None,
-        tool_choice: Union[Literal["auto", "none", "required"], Dict] = "auto",
+        messages: List[Dict[str, Any]],
+        tools: Optional[List[ModelFormattedDictTool]] = None,
+        tool_choice: ToolChoiceOrDictType = "auto",
         parallel_tool_calls: Optional[bool] = None,
         temperature: Optional[float] = None,
         max_completion_tokens: int = 5068,
-        response_format: Optional[Dict] = None,
+        response_format: Optional[Dict[str, Any]] = None,
         reasoning_effort: Optional[Literal["low", "medium", "high"]] = None,
         test: bool = False,
         **kwargs: Any,
@@ -183,7 +196,7 @@ class Gpt_4o_Mini_Latest:
         """
         This method will construct a default group of parameters for the OpenRouter provider.
         """
-        return self.provider.generate(
+        tmp = self.provider.generate(
             messages=messages,
             temperature=temperature,
             tools=tools,
@@ -194,6 +207,8 @@ class Gpt_4o_Mini_Latest:
             test=test,
             **kwargs,
         )
+        assert isinstance(tmp, OpenAIResponse), "tmp is not an OpenAIResponse"
+        return tmp
 
 
 class Gpt_o3_Mini(Model):
@@ -202,10 +217,12 @@ class Gpt_o3_Mini(Model):
     """
 
     def __init__(self, provider: Providers) -> None:
-        self.generate = None
-        self.api_key = os.getenv("OPENAI_API_KEY")
-        self.model = "o3-mini"
-        self.provider = self.__getProvider(provider)
+        self.generate : Optional[Any] = None
+        self.api_key : str = os.getenv("OPENAI_API_KEY")
+        assert self.api_key is not None, "OPENAI_API_KEY is not set"
+
+        self.model : str = "o3-mini" # TODO use literal
+        self.provider : OpenAIProvider = self.__getProvider(provider)
 
     def __getProvider(self, provider: Providers) -> OpenAIProvider:
         """Get the provider and set the generate method."""
@@ -222,13 +239,13 @@ class Gpt_o3_Mini(Model):
 
     def __generate_openai(
         self,
-        messages: List[Dict],
-        tools: Optional[List[Dict]] = None,
-        tool_choice: Union[Literal["auto", "none", "required"], Dict] = "auto",
+        messages: List[Dict[str, Any]],
+        tools: Optional[List[ModelFormattedDictTool]] = None,
+        tool_choice: ToolChoiceOrDictType = "auto",
         parallel_tool_calls: Optional[bool] = None,
         temperature: Optional[float] = None,
         max_completion_tokens: int = 5068,
-        response_format: Optional[Dict] = None,
+        response_format: Optional[Dict[str, Any]] = None,
         reasoning_effort: Optional[Literal["low", "medium", "high"]] = None,
         test: bool = False,
         **kwargs: Any,
@@ -237,7 +254,7 @@ class Gpt_o3_Mini(Model):
         This method will construct a default group of parameters for the OpenAI provider.
         It will update the parameters with the ones provided in the kwargs.
         """
-        return self.provider.generate(
+        tmp = self.provider.generate(
             messages=messages,
             tools=tools,
             tool_choice=tool_choice,
@@ -248,12 +265,14 @@ class Gpt_o3_Mini(Model):
             test=test,
             **kwargs,
         )
+        assert isinstance(tmp, OpenAIResponse), "tmp is not an OpenAIResponse"
+        return tmp
 
     def __generate_openrouter(
         self,
         messages: List[Dict],
-        tools: Optional[List[Dict]] = None,
-        tool_choice: Union[Literal["auto", "none", "required"], Dict] = "auto",
+        tools: Optional[List[ModelFormattedDictTool]] = None,
+        tool_choice: ToolChoiceOrDictType = "auto",
         parallel_tool_calls: Optional[bool] = None,
         temperature: Optional[float] = None,
         max_completion_tokens: int = 5068,
@@ -265,7 +284,7 @@ class Gpt_o3_Mini(Model):
         """
         This method will construct a default group of parameters for the OpenRouter provider.
         """
-        return self.provider.generate(
+        tmp = self.provider.generate(
             messages=messages,
             tools=tools,
             tool_choice=tool_choice,
@@ -275,3 +294,8 @@ class Gpt_o3_Mini(Model):
             test=test,
             **kwargs,
         )
+        assert isinstance(tmp, OpenAIResponse), "tmp is not an OpenAIResponse"
+        return tmp
+
+# TODO there needs to be an interface for these models to impliment ie base class
+openai_model_type = Union[Gpt41Mini, Gpt_4o_Mini_Latest, Gpt_o3_Mini]

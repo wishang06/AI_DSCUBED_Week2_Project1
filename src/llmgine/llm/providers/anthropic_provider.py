@@ -13,7 +13,7 @@ from llmgine.llm.providers.events import LLMCallEvent, LLMResponseEvent
 from llmgine.llm.providers.providers import Providers
 from llmgine.llm.providers.response import LLMResponse, ResponseTokens
 from llmgine.llm.tools.toolCall import ToolCall
-
+from llmgine.llm import ToolChoiceOrDictType
 
 class AnthropicResponse(LLMResponse):
     def __init__(self, response: ChatCompletion) -> None:
@@ -68,7 +68,7 @@ class AnthropicProvider(LLMProvider):
         self,
         messages: List[Dict],
         tools: Optional[List[Dict]] = None,
-        tool_choice: Union[Literal["auto", "none", "required"], Dict] = "auto",
+        tool_choice: ToolChoiceOrDictType = "auto",
         parallel_tool_calls: Optional[bool] = None,
         temperature: Optional[float] = None,
         max_completion_tokens: int = 5068,
@@ -142,7 +142,7 @@ class AnthropicProvider(LLMProvider):
         else:
             return AnthropicResponse(response)
 
-    def stream():
+    def stream() -> None:
         # TODO: Implement streaming
         raise NotImplementedError("Streaming is not supported for OpenAI")
 
