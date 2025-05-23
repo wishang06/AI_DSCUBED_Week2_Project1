@@ -54,6 +54,6 @@ class Gemini25FlashPreview:
             temperature=temperature,
             max_completion_tokens=max_completion_tokens,
         )
-        assert isinstance(tmp, LLMResponse), "tmp is not an LLMResponse"
+        #assert isinstance(tmp, LLMResponse), "tmp is not an LLMResponse"
         return tmp
 

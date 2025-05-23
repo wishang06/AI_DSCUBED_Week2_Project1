@@ -12,7 +12,7 @@ from llmgine.llm.providers import Providers
 from llmgine.llm.providers.providers import Provider
 from llmgine.llm.providers.response import LLMResponse
 import instructor
-from llmgine.llm import ToolChoiceOrDictType
+from llmgine.llm import ToolChoiceOrDictType, ModelFormattedDictTool
 
 dotenv.load_dotenv()
 
@@ -43,12 +43,12 @@ class Claude35Haiku:
 
     async def _generate_from_anthropic(
         self,   
-        messages: List[Dict],
-        tools: Optional[List[Dict]] = None,
+        messages: List[Dict[str, Any]],
+        tools: Optional[List[ModelFormattedDictTool]] = None,
         tool_choice: ToolChoiceOrDictType = "auto",
         temperature: float = 0.7,
         max_completion_tokens: int = 5068,
-        response_format: Optional[Dict] = None,
+        response_format: Optional[Dict[str, Any]] = None,
         thinking_enabled: bool = False,
         thinking_budget: Optional[int] = None,
         instruct: bool = False,
