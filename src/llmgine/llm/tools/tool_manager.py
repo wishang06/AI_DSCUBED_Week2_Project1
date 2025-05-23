@@ -6,7 +6,7 @@ that can be called by language models.
 
 import json
 import uuid
-from typing import Any, Dict, List, Optional
+from typing import Any, List, Optional
 
 from llmgine.bus.bus import MessageBus
 from llmgine.llm import AsyncOrSyncToolFunction, ModelFormattedDictTool

@@ -23,10 +23,12 @@ from llmgine.llm.tools.tool_manager import ToolManager
 from llmgine.llm.models.openai_models import Gpt41Mini
 from llmgine.llm.providers.providers import Providers
 from llmgine.llm.context.memory import SimpleChatHistory
-from llmgine.llm.tools import ToolCall, Tool
+from llmgine.llm.tools import ToolCall
 from llmgine.ui.cli.voice_processing_engine_cli import SpecificPrompt, SpecificComponent, SpecificPromptCommand, SpecificComponentEvent
-
+from llmgine.llm import SessionID, AsyncOrSyncToolFunction
 from programs.Audio2Text import process_audio, merge_speakers, merge_speakers_engine
+from llmgine.llm.models.openai_models import OpenAIResponse
+from openai.types.chat.chat_completion_message import ChatCompletionMessage
 
 SYSTEM_PROMPT = f'You are a voice processing engine. You are provided with the number of speakers inside the conversation, '\
 f'and a snippet of what each speaker said in the conversation. '\
@@ -57,15 +59,15 @@ class VoiceProcessingEngineToolResultEvent(Event):
 class VoiceProcessingEngine(Engine):
     def __init__(
         self,
-        model: Model,
+        model: Model, # TODO This name and class could be more descriptive
         system_prompt: Optional[str] = None,
-        session_id: str = "test",
+        session_id: SessionID = SessionID("test"),
     ):
-        self.model = model
-        self.system_prompt = system_prompt
-        self.session_id = session_id
-        self.message_bus = MessageBus()
-        self.engine_id = str(uuid.uuid4())
+        self.model : Model = model
+        self.system_prompt : Optional[str] = system_prompt
+        self.session_id : SessionID = SessionID(session_id)
+        self.message_bus : MessageBus = MessageBus()
+        self.engine_id : str = str(uuid.uuid4())
 
         # Create tightly coupled components - pass the simple engine
         self.context_manager = SimpleChatHistory(
@@ -123,11 +125,17 @@ class VoiceProcessingEngine(Engine):
                 )
             )
             # Generate the response
-            response = await self.llm_manager.generate(
+            response : OpenAIResponse = await self.llm_manager.generate(
                 messages=current_context, tools=tools, tool_choice="auto"
             )
+            assert isinstance(response, OpenAIResponse), "response is not an OpenAIResponse"
+
+
             # Get the response message
-            response_message = response.raw.choices[0].message
+            response_message : ChatCompletionMessage = response.raw.choices[0].message
+            assert isinstance(response_message, ChatCompletionMessage), "response_message is not a ChatCompletionMessage"
+
+
             # Store the response message
             await self.context_manager.store_assistant_message(response_message)
             # If there are no tool calls, break the loop and return the content
@@ -196,7 +204,7 @@ class VoiceProcessingEngine(Engine):
                     )
 
     
-    async def register_tool(self, function : Tool):
+    async def register_tool(self, function : AsyncOrSyncToolFunction):
         """Register a function as a tool.
 
         Args:
@@ -220,7 +228,7 @@ async def main():
     engine = VoiceProcessingEngine(
         model=Gpt41Mini(Providers.OPENAI),
         system_prompt=SYSTEM_PROMPT,
-        session_id="test",
+        session_id=SessionID("test"),
     )
 
     # Register cli components
