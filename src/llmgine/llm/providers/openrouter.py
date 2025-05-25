@@ -10,6 +10,7 @@ from llmgine.llm.providers.events import LLMCallEvent, LLMResponseEvent
 from llmgine.llm.providers.providers import Providers
 from llmgine.llm.providers.response import LLMResponse, ResponseTokens
 from llmgine.llm.tools.toolCall import ToolCall
+from llmgine.llm import ToolChoiceOrDictType
 
 OpenRouterProviders = Literal[
     "OpenAI",
@@ -136,7 +137,7 @@ class OpenRouterProvider(LLMProvider):
         self,
         messages: List[Dict],
         tools: Optional[List[Dict]] = None,
-        tool_choice: Union[Literal["auto", "none", "required"], Dict] = "auto",
+        tool_choice: ToolChoiceOrDictType = "auto",
         temperature: float = 0.7,
         max_completion_tokens: int = 5068,
         response_format: Optional[Dict] = None,

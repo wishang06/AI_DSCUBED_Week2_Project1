@@ -1,17 +1,17 @@
 from llmgine.llm.providers import Providers
 from llmgine.llm.providers.openrouter import OpenRouterProvider
-from typing import List, Dict, Literal, Optional, Union
+from typing import List, Dict, Literal, Optional, Union, Any
 import uuid
 import os
 
 from llmgine.llm.providers.response import LLMResponse
-
+from llmgine.llm import ToolChoiceOrDictType
 
 class Grok3Mini:
 
     def __init__(self, provider: Providers) -> None:
-        self.id = str(uuid.uuid4())
-        self.generate = None
+        self.id : str = str(uuid.uuid4())
+        self.generate : Optional[Any] = None
         self._setProvider(provider)
 
     def _setProvider(self, provider: Providers) -> None:
@@ -32,7 +32,7 @@ class Grok3Mini:
         self,
         messages: List[Dict],
         tools: Optional[List[Dict]] = None,
-        tool_choice: Union[Literal["auto", "none", "required"], Dict] = "auto",
+        tool_choice: ToolChoiceOrDictType = "auto",
         temperature: float = 0.7,
         max_completion_tokens: int = 5068,
     ) -> LLMResponse:

@@ -52,8 +52,8 @@ class EngineCLI:
         self.prompt_lookup: dict[Any, Any] = {}
         self.cli_command_lookup: dict[Any, Any] = {}  # TODO what is this type?
         # Loading UI components
-        self.spinner: Optional[Any] = None
-        self.live: Optional[Any] = None
+        self.spinner: Optional[Spinner] = None
+        self.live: Optional[Live] = None
         self.hidden: bool = False
         # Bus
         self.bus: MessageBus = MessageBus()
@@ -117,7 +117,7 @@ class EngineCLI:
 
         return result
 
-    async def update_status(self, event: Event):
+    async def update_status(self, event: StatusEvent):
         if event.status == "finished":  # TODO event doesn't have status?
             await self.stop_loading()
         else:
@@ -170,7 +170,7 @@ class EngineCLI:
         self.prompt_lookup[command] = prompt
         self.bus.register_command_handler(command, self.prompt_router, self.session_id)
 
-    def register_loading_event(self, event: Event) -> None:
+    def register_loading_event(self, event: type[Event]) -> None:
         self.bus.register_event_handler(event, self.update_status, self.session_id)
 
     def redraw(self) -> None:

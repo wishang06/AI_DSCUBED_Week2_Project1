@@ -8,13 +8,13 @@ import contextvars
 # Import Event directly to avoid circular import
 from llmgine.messages.events import Event
 from llmgine.messages.commands import Command, CommandResult
-
+from llmgine.llm import SessionID
 
 @dataclass
 class SessionEvent(Event):
     """An event that is part of a session."""
 
-    session_id: str
+    session_id: Optional[SessionID] = None
 
 
 @dataclass
