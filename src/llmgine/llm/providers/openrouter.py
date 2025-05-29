@@ -1,8 +1,9 @@
 import uuid
 from typing import Any, Dict, List, Literal, Optional, Union
 
-from litellm import AsyncOpenAI
+from openai import AsyncOpenAI
 from openai.types.chat import ChatCompletion
+from prompt_toolkit import Application
 
 from llmgine.bus.bus import MessageBus
 from llmgine.llm.providers import LLMProvider
@@ -145,16 +146,20 @@ class OpenRouterProvider(LLMProvider):
         reasoning_max_tokens: Optional[int] = None,
         reasoning_effort: Optional[Literal["low", "medium", "high"]] = None,
         reasoning_include_reasoning: Optional[bool] = False,
+        retry_count: int = 1,
         test: bool = False,
         **kwargs: Any,
     ) -> LLMResponse:
         call_id = str(uuid.uuid4())
+
+        # Default payload
         payload = {
             "model": self.model,
             "messages": messages,
             "max_completion_tokens": max_completion_tokens,
         }
 
+        # Provider specific
         if self.provider:
             payload["extra_body"] = {
                 "provider": {
@@ -164,21 +169,26 @@ class OpenRouterProvider(LLMProvider):
                 }
             }
 
+        # Temperature
         if temperature:
             payload["temperature"] = temperature
 
+        # Tools
         if tools:
             payload["tools"] = tools
 
             if tool_choice:
                 payload["tool_choice"] = tool_choice
 
+        # Response format
         if response_format:
             payload["response_format"] = response_format
 
+        # Reasoning
         if reasoning_effort:
             payload["reasoning_effort"] = reasoning_effort
 
+        # Reasoning
         if reasoning:
             payload["extra_body"]["reasoning"] = {}
             if reasoning_max_tokens:
@@ -188,7 +198,10 @@ class OpenRouterProvider(LLMProvider):
             if not reasoning_include_reasoning:
                 payload["extra_body"]["reasoning"]["exclude"] = True
 
-        payload.update(**kwargs)
+        # Update payload with additional kwargs
+        payload.update(**kwargs)  # type: ignore
+
+        # Call event
         call_event = LLMCallEvent(
             call_id=call_id,
             model_id=self.model_component_id,
@@ -196,16 +209,17 @@ class OpenRouterProvider(LLMProvider):
             payload=payload,
         )
         await self.bus.publish(call_event)
-        try:
-            response = await self.client.chat.completions.create(**payload)
-        except Exception as e:
-            await self.bus.publish(
-                LLMResponseEvent(
-                    call_id=call_id,
-                    error=e,
+        for _ in range(retry_count):
+            try:
+                response = await self.client.chat.completions.create(**payload)
+                break
+            except Exception as e:
+                await self.bus.publish(
+                    LLMResponseEvent(
+                        call_id=call_id,
+                        error=e,
+                    )
                 )
-            )
-            raise e
         await self.bus.publish(
             LLMResponseEvent(
                 call_id=call_id,
@@ -213,10 +227,53 @@ class OpenRouterProvider(LLMProvider):
             )
         )
         if test:
+            # Return raw response
             return response
         else:
+            # Return wrapped response
             return OpenRouterResponse(response)
 
     def stream() -> None:
         # TODO: Implement streaming
         raise NotImplementedError("Streaming is not supported for OpenRouter")
+
+
+async def main():
+    from llmgine.bootstrap import ApplicationBootstrap, ApplicationConfig
+    import os
+    from llmgine.llm.tools import ToolManager
+
+    def get_weather(city: str) -> str:
+        """
+        Get the weather in a city.
+
+        Args:
+            city: The city to get the weather for.
+
+        Returns:
+            str: The weather in the city.
+        """
+        return f"The weather in {city} is sunny with a chance to rain meatballs."
+
+    app = ApplicationBootstrap(ApplicationConfig(enable_console_handler=False))
+    await app.bootstrap()
+    tool_manager = ToolManager(session_id="test", engine_id="test")
+    await tool_manager.register_tool(get_weather)
+    provider = OpenRouterProvider(
+        api_key=os.getenv("OPENROUTER_API_KEY"),
+        model="deepseek/deepseek-chat-v3-0324",
+        provider="Fireworks",
+    )
+    tools = await tool_manager.get_tools()
+    response = await provider.generate(
+        messages=[{"role": "user", "content": "Whats the weather in Tokyo?"}],
+        tools=tools,
+        test=True,
+    )
+    print(response)
+
+
+if __name__ == "__main__":
+    import asyncio
+
+    asyncio.run(main())
