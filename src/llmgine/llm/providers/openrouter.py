@@ -146,7 +146,7 @@ class OpenRouterProvider(LLMProvider):
         reasoning_max_tokens: Optional[int] = None,
         reasoning_effort: Optional[Literal["low", "medium", "high"]] = None,
         reasoning_include_reasoning: Optional[bool] = False,
-        retry_count: int = 1,
+        retry_count: int = 5,
         test: bool = False,
         **kwargs: Any,
     ) -> LLMResponse:
@@ -212,6 +212,12 @@ class OpenRouterProvider(LLMProvider):
         for _ in range(retry_count):
             try:
                 response = await self.client.chat.completions.create(**payload)
+                await self.bus.publish(
+                    LLMResponseEvent(
+                        call_id=call_id,
+                        raw_response=response,
+                    )
+                )
                 break
             except Exception as e:
                 await self.bus.publish(
@@ -220,12 +226,6 @@ class OpenRouterProvider(LLMProvider):
                         error=e,
                     )
                 )
-        await self.bus.publish(
-            LLMResponseEvent(
-                call_id=call_id,
-                raw_response=response,
-            )
-        )
         if test:
             # Return raw response
             return response
