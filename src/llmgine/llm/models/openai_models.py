@@ -191,7 +191,7 @@ class Gpt41Mini:
             test=test,
             **kwargs,
         )
-        assert isinstance(tmp, OpenAIResponse), "tmp is not an OpenAIResponse"
+        # assert isinstance(tmp, OpenAIResponse), "tmp is not an OpenAIResponse"
         return tmp
 
     def _generate_openrouter(

@@ -1,12 +1,11 @@
 import uuid
-import os
 import json
 import asyncio
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from llmgine.bus.bus import MessageBus
 from llmgine.llm.context.memory import SimpleChatHistory
-from llmgine.llm.models.openai_models import Gpt41Mini, Gpt_4o_Mini_Latest
+from llmgine.llm.models.openai_models import Gpt41Mini
 from llmgine.llm.providers.providers import Providers
 from llmgine.llm.tools.tool_manager import ToolManager
 from llmgine.llm.tools import ToolCall
@@ -16,8 +15,8 @@ from openai.types.chat.chat_completion_message import ChatCompletionMessage
 from llmgine.messages.commands import Command, CommandResult
 from llmgine.messages.events import Event
 from llmgine.ui.cli.cli import EngineCLI
-from llmgine.ui.cli.components import CLIPrompt, EngineResultComponent
-from dataclasses import dataclass, field
+from llmgine.ui.cli.components import EngineResultComponent
+from dataclasses import dataclass
 from llmgine.llm import SessionID, AsyncOrSyncToolFunction
 
 
@@ -33,6 +32,7 @@ class ToolChatEngineStatusEvent(Event):
     """Event emitted when the status of the engine changes."""
 
     status: str = ""
+
 
 @dataclass
 class ToolChatEngineToolResultEVent(Event):
@@ -57,9 +57,9 @@ class ToolChatEngine:
             message_bus: Optional MessageBus instance (from bootstrap)
         """
         # Use the provided message bus or create a new one
-        self.message_bus : MessageBus = MessageBus()
-        self.engine_id : str = str(uuid.uuid4())
-        self.session_id : SessionID = SessionID(session_id)
+        self.message_bus: MessageBus = MessageBus()
+        self.engine_id: str = str(uuid.uuid4())
+        self.session_id: SessionID = SessionID(session_id)
 
         # Create tightly coupled components - pass the simple engine
         self.context_manager = SimpleChatHistory(
@@ -69,7 +69,6 @@ class ToolChatEngine:
         self.tool_manager = ToolManager(
             engine_id=self.engine_id, session_id=self.session_id, llm_model_name="openai"
         )
-
 
     async def handle_command(self, command: ToolChatEngineCommand) -> CommandResult:
         """Handle a prompt command following OpenAI tool usage pattern.
@@ -101,17 +100,21 @@ class ToolChatEngine:
                         status="calling LLM", session_id=self.session_id
                     )
                 )
-                response : OpenAIResponse = await self.llm_manager.generate(
+                response: OpenAIResponse = await self.llm_manager.generate(
                     messages=current_context, tools=tools
                 )
-                assert isinstance(response, OpenAIResponse), "response is not an OpenAIResponse"
+                assert isinstance(response, OpenAIResponse), (
+                    "response is not an OpenAIResponse"
+                )
 
                 # print(f"\nLLM Raw Response:\n{response.raw}\n")  # Debug print
 
                 # 5. Extract the first choice's message object
                 # Important: Access the underlying OpenAI object structure
-                response_message : ChatCompletionMessage = response.raw.choices[0].message
-                assert isinstance(response_message, ChatCompletionMessage), "response_message is not a ChatCompletionMessage"
+                response_message: ChatCompletionMessage = response.raw.choices[0].message
+                assert isinstance(response_message, ChatCompletionMessage), (
+                    "response_message is not a ChatCompletionMessage"
+                )
 
                 # 6. Add the *entire* assistant message object to history.
                 # This is crucial for context if it contains tool_calls.
@@ -146,7 +149,7 @@ class ToolChatEngine:
                                 status="executing tool", session_id=self.session_id
                             )
                         )
-                        
+
                         result = await self.tool_manager.execute_tool_call(tool_call_obj)
 
                         # Convert result to string if needed for history
@@ -193,7 +196,7 @@ class ToolChatEngine:
 
             return CommandResult(success=False, error=str(e), session_id=self.session_id)
 
-    async def register_tool(self, function : AsyncOrSyncToolFunction):
+    async def register_tool(self, function: AsyncOrSyncToolFunction):
         """Register a function as a tool.
 
         Args:
@@ -216,8 +219,18 @@ class ToolChatEngine:
 
 
 async def main():
+    import os
+    import sys
+
+    # Add the project root to Python path so we can import from tools
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if project_root not in sys.path:
+        sys.path.insert(0, project_root)
+
+    print(f"Current working directory: {os.getcwd()}")
     from tools.test_tools import get_weather
     from llmgine.ui.cli.components import ToolComponent
+
     await MessageBus().start()
     cli = EngineCLI(SessionID("test"))
     engine = ToolChatEngine(session_id=SessionID("test"))
