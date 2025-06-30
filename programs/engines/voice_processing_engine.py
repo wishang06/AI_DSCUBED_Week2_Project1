@@ -24,28 +24,37 @@ from llmgine.llm.models.openai_models import Gpt41Mini
 from llmgine.llm.providers.providers import Providers
 from llmgine.llm.context.memory import SimpleChatHistory
 from llmgine.llm.tools import ToolCall
-from llmgine.ui.cli.voice_processing_engine_cli import SpecificPrompt, SpecificComponent, SpecificPromptCommand, SpecificComponentEvent
+from llmgine.ui.cli.voice_processing_engine_cli import (
+    SpecificPrompt,
+    SpecificComponent,
+    SpecificPromptCommand,
+    SpecificComponentEvent,
+)
 from llmgine.llm import SessionID, AsyncOrSyncToolFunction
-from programs.Audio2Text import process_audio, merge_speakers, merge_speakers_engine
+from programs.stt import process_audio, merge_speakers, merge_speakers_engine
 from llmgine.llm.models.openai_models import OpenAIResponse
 from openai.types.chat.chat_completion_message import ChatCompletionMessage
 
-SYSTEM_PROMPT = f'You are a voice processing engine. You are provided with the number of speakers inside the conversation, '\
-f'and a snippet of what each speaker said in the conversation. '\
-f'The number of speakers present in the snippet will be greater than the actual number of speakers in the conversation. '\
-f'Your task is to decide which speakers in the snippet should be merged into a single speaker, based on the context, speaking style, '\
-f'and the content of what they said. Make sure the number of speakers after merge is the same as the actual number of speakers in the conversation. '\
-f'If you think speaker_1 and speaker_2 are actually one person, speaker_3 and speaker_4 are one person: '\
-f'example function call: merge_speakers("speaker_1,speaker_2") ; merge_speakers("speaker_3,speaker_4")'
+SYSTEM_PROMPT = (
+    f"You are a voice processing engine. You are provided with the number of speakers inside the conversation, "
+    f"and a snippet of what each speaker said in the conversation. "
+    f"The number of speakers present in the snippet will be greater than the actual number of speakers in the conversation. "
+    f"Your task is to decide which speakers in the snippet should be merged into a single speaker, based on the context, speaking style, "
+    f"and the content of what they said. Make sure the number of speakers after merge is the same as the actual number of speakers in the conversation. "
+    f"If you think speaker_1 and speaker_2 are actually one person, speaker_3 and speaker_4 are one person: "
+    f'example function call: merge_speakers("speaker_1,speaker_2") ; merge_speakers("speaker_3,speaker_4")'
+)
 
 
 @dataclass
 class VoiceProcessingEngineCommand(Command):
     prompt: str = ""
 
+
 @dataclass
 class VoiceProcessingEngineStatusEvent(Event):
-    status: str = "" 
+    status: str = ""
+
 
 @dataclass
 class VoiceProcessingEngineToolResultEvent(Event):
@@ -59,15 +68,15 @@ class VoiceProcessingEngineToolResultEvent(Event):
 class VoiceProcessingEngine(Engine):
     def __init__(
         self,
-        model: Model, # TODO This name and class could be more descriptive
+        model: Model,  # TODO This name and class could be more descriptive
         system_prompt: Optional[str] = None,
         session_id: SessionID = SessionID("test"),
     ):
-        self.model : Model = model
-        self.system_prompt : Optional[str] = system_prompt
-        self.session_id : SessionID = SessionID(session_id)
-        self.message_bus : MessageBus = MessageBus()
-        self.engine_id : str = str(uuid.uuid4())
+        self.model: Model = model
+        self.system_prompt: Optional[str] = system_prompt
+        self.session_id: SessionID = SessionID(session_id)
+        self.message_bus: MessageBus = MessageBus()
+        self.engine_id: str = str(uuid.uuid4())
 
         # Create tightly coupled components - pass the simple engine
         self.context_manager = SimpleChatHistory(
@@ -78,7 +87,9 @@ class VoiceProcessingEngine(Engine):
             engine_id=self.engine_id, session_id=self.session_id, llm_model_name="openai"
         )
 
-    async def handle_command(self, command: VoiceProcessingEngineCommand) -> CommandResult:
+    async def handle_command(
+        self, command: VoiceProcessingEngineCommand
+    ) -> CommandResult:
         """Handle a prompt command following OpenAI tool usage pattern.
 
         Args:
@@ -97,16 +108,21 @@ class VoiceProcessingEngine(Engine):
                 return CommandResult(success=True, result="No merge is required.")
 
             # Prompt the LLM with the actual number of speakers and the snippet
-            prompt = "Actual Number of speakers: " + number_of_speakers + ".\nHere is the snippet of what each speaker said in the conversation: " + str(snippet)
+            prompt = (
+                "Actual Number of speakers: "
+                + number_of_speakers
+                + ".\nHere is the snippet of what each speaker said in the conversation: "
+                + str(snippet)
+            )
             result = await self.execute(prompt=prompt)
-            
+
             return CommandResult(success=True, result=result)
         except Exception as e:
             return CommandResult(success=False, error=str(e))
 
     async def execute(self, prompt: str) -> str:
         """This function executes the engine.
-        
+
         Args:
             prompt: The prompt to execute
         """
@@ -125,16 +141,18 @@ class VoiceProcessingEngine(Engine):
                 )
             )
             # Generate the response
-            response : OpenAIResponse = await self.llm_manager.generate(
+            response: OpenAIResponse = await self.llm_manager.generate(
                 messages=current_context, tools=tools, tool_choice="auto"
             )
-            assert isinstance(response, OpenAIResponse), "response is not an OpenAIResponse"
-
+            assert isinstance(response, OpenAIResponse), (
+                "response is not an OpenAIResponse"
+            )
 
             # Get the response message
-            response_message : ChatCompletionMessage = response.raw.choices[0].message
-            assert isinstance(response_message, ChatCompletionMessage), "response_message is not a ChatCompletionMessage"
-
+            response_message: ChatCompletionMessage = response.raw.choices[0].message
+            assert isinstance(response_message, ChatCompletionMessage), (
+                "response_message is not a ChatCompletionMessage"
+            )
 
             # Store the response message
             await self.context_manager.store_assistant_message(response_message)
@@ -162,15 +180,15 @@ class VoiceProcessingEngine(Engine):
                         VoiceProcessingEngineStatusEvent(
                             status="executing tool", session_id=self.session_id
                         )
-                    )                
-                    
+                    )
+
                     # Insert audio file path here manually
                     if tool_call.function.name == "merge_speakers":
                         args = json.loads(tool_call.function.arguments)
                         args["audio_file"] = self.audio_file_path
                         tool_call_obj.arguments = json.dumps(args)
                         tool_call_obj.name = "merge_speakers_engine"
-                        
+
                     result = await self.tool_manager.execute_tool_call(tool_call_obj)
 
                     # Convert result to string if needed for history
@@ -203,8 +221,7 @@ class VoiceProcessingEngine(Engine):
                         content=error_msg,
                     )
 
-    
-    async def register_tool(self, function : AsyncOrSyncToolFunction):
+    async def register_tool(self, function: AsyncOrSyncToolFunction):
         """Register a function as a tool.
 
         Args:
@@ -252,5 +269,3 @@ if __name__ == "__main__":
     import asyncio
 
     asyncio.run(main())
-
-
