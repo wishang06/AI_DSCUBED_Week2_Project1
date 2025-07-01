@@ -9,7 +9,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
 from types import FrameType
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, override
 
 from llmgine.llm import SessionID
 from llmgine.messages.commands import Command, CommandResult
@@ -45,6 +45,24 @@ class Event:
         else:
             self.metadata["emitted_from"] = "unknown"
 
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Convert the event to a dictionary.
+        """
+        return {
+            "event_id": self.event_id,
+            "timestamp": self.timestamp,
+            "metadata": self.metadata,
+            "session_id": self.session_id,
+        }
+    
+    @classmethod
+    def from_dict(cls, event_dict: Dict[str, Any]) -> "Event":
+        """
+        Create an Event from a dictionary.
+        """
+        return cls(**event_dict)
+
 
 @dataclass
 class EventHandlerFailedEvent(Event):
@@ -78,3 +96,25 @@ class ScheduledEvent(Event):
     If not, the event will be treated as a regular event.
     """
     scheduled_time: datetime = field(default_factory=lambda: datetime.now())
+
+    @override
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Convert the event to a dictionary.
+        """
+        return {
+            "event_id": self.event_id,
+            "timestamp": self.timestamp,
+            "metadata": self.metadata,
+            "session_id": self.session_id,
+            "scheduled_time": self.scheduled_time.isoformat()
+        }
+    
+    @classmethod
+    def from_dict(cls, event_dict: Dict[str, Any]) -> "ScheduledEvent":
+        """
+        Create a ScheduledEvent from a dictionary.
+        """
+        if "scheduled_time" in event_dict:
+            event_dict["scheduled_time"] = datetime.fromisoformat(event_dict["scheduled_time"])
+        return cls(**event_dict)

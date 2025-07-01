@@ -1,6 +1,7 @@
 import asyncio
 from datetime import datetime, timedelta
-from llmgine.bus.bus import MessageBus
+import sys
+from llmgine.bus.bus import MessageBus, bus_exception_hook
 from llmgine.messages.events import ScheduledEvent, Event
 
 # Handler that prints when called, accepts base Event type
@@ -50,8 +51,69 @@ async def test_scheduled_events_and_regular_events_are_processed():
     await bus.publish(event4)
 
     await asyncio.sleep(6)
-    await bus.ensure_events_processed()
     await bus.stop()
 
+async def create_normal_event(bus: MessageBus) -> None:
+    event = Event()
+    await bus.publish(event)
+
+async def create_scheduled_event(bus: MessageBus, scheduled_time: datetime) -> None:
+    event = ScheduledEvent(scheduled_time=scheduled_time)
+    await bus.publish(event)
+
+async def test_scheduled_events_with_exception():
+    bus = MessageBus()
+    bus_exception_hook(bus)
+    await bus.start()
+
+    # Register the handler for ScheduledEvent and regular events
+    bus.register_event_handler(ScheduledEvent, scheduled_event_handler)
+    bus.register_event_handler(Event, regular_event_handler)
+    
+    # Schedule two events 10 seconds in the future
+    await create_scheduled_event(bus, datetime.now() + timedelta(seconds=10))
+    await create_scheduled_event(bus, datetime.now() + timedelta(seconds=10))
+    await create_scheduled_event(bus, datetime.now() + timedelta(seconds=10))
+    await create_scheduled_event(bus, datetime.now() + timedelta(seconds=10))
+
+    await asyncio.sleep(3)
+    await create_normal_event(bus)
+    await create_normal_event(bus)
+    await create_normal_event(bus)
+    await create_normal_event(bus)
+    await asyncio.sleep(1)
+    await create_normal_event(bus)
+    await create_normal_event(bus)
+
+    # Raise an exception to test the excepthook
+    raise RuntimeError("Test exception to trigger cleanup")
+
+async def test_scheduled_events_with_kill():
+    bus = MessageBus()
+    bus_exception_hook(bus)
+    await bus.start()
+
+    # Register the handler for ScheduledEvent and regular events
+    bus.register_event_handler(ScheduledEvent, scheduled_event_handler)
+    bus.register_event_handler(Event, regular_event_handler)
+    
+    # Schedule two events 10 seconds in the future
+    await create_scheduled_event(bus, datetime.now() + timedelta(seconds=10))
+    await create_scheduled_event(bus, datetime.now() + timedelta(seconds=10))
+    await create_scheduled_event(bus, datetime.now() + timedelta(seconds=10))
+    await create_scheduled_event(bus, datetime.now() + timedelta(seconds=10))
+
+    await asyncio.sleep(3)
+    await create_normal_event(bus)
+    await create_normal_event(bus)
+    await create_normal_event(bus)
+    await create_normal_event(bus)
+    await asyncio.sleep(10)
+    await create_normal_event(bus)
+    await create_normal_event(bus)
+
+    # Raise an exception to test the excepthook
+    sys.exit(1)
+
 if __name__ == "__main__":
-    asyncio.run(test_scheduled_events_and_regular_events_are_processed())
+    asyncio.run(test_scheduled_events_with_exception())

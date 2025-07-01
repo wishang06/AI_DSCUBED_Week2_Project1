@@ -4,11 +4,15 @@ The message bus is the central communication mechanism in the application,
 providing a way for components to communicate without direct dependencies.
 """
 
+import json
+import os
+import sys
 import asyncio
 import contextvars
 from datetime import datetime
 import logging
 import traceback
+from types import TracebackType
 from typing import (
     Any,
     Awaitable,
@@ -98,6 +102,7 @@ class MessageBus:
         self.event_handler_errors: List[Exception] = []
         logger.info("MessageBus initialized")
         self._initialized = True
+        self.data_dir = os.path.dirname(os.path.abspath(__file__))
 
     async def reset(self) -> None:
         """
@@ -143,7 +148,8 @@ class MessageBus:
             if self._event_queue is None:
                 self._event_queue = asyncio.Queue()
                 logger.info("Event queue created")
-                self._processing_task = asyncio.create_task(self._process_events())
+            await self._load_queue()
+            self._processing_task = asyncio.create_task(self._process_events())
             logger.info("MessageBus started")
         else:
             logger.warning("MessageBus already running")
@@ -156,11 +162,15 @@ class MessageBus:
         if self._processing_task:
             logger.info("Stopping message bus...")
             self._processing_task.cancel()
+            
+            await self._dump_queue()
+            self._event_queue = None
+
             try:
                 await asyncio.wait_for(self._processing_task, timeout=2.0)
                 logger.info("MessageBus stopped successfully")
-            except (asyncio.CancelledError, asyncio.TimeoutError) as e:
-                logger.warning(f"MessageBus stop issue: {type(e).__name__}")
+            except asyncio.CancelledError:
+                logger.info("MessageBus task cancelled successfully")
             except Exception as e:
                 logger.exception(f"Error during MessageBus shutdown: {e}")
             finally:
@@ -392,33 +402,42 @@ class MessageBus:
 
         while True:
             try:
-                event = await self._event_queue.get()  # type: ignore
-                logger.debug(f"Dequeued event {type(event).__name__}")
+                total_events = self._event_queue.qsize() # type: ignore
+                while not self._event_queue.empty() and total_events > 0: # type: ignore
+                    try:
+                        total_events -= 1
+                        event = await self._event_queue.get()  # type: ignore
+                        logger.debug(f"Dequeued event {type(event).__name__}")
 
-                # if a scheduled event is not yet due, we queue it again
-                if isinstance(event, ScheduledEvent) and event.scheduled_time > datetime.now():
-                    await self._event_queue.put(event) # type: ignore
-                    logger.debug(f"Event {type(event).__name__} is scheduled for {event.scheduled_time}, queuing again")
-                    continue
+                        # if a scheduled event is not yet due, we queue it again
+                        if isinstance(event, ScheduledEvent) and event.scheduled_time > datetime.now():
+                            await self._event_queue.put(event) # type: ignore
+                            logger.debug(f"Event {type(event).__name__} is scheduled for {event.scheduled_time}, queuing again")
+                            continue
 
-                try:
-                    await self._handle_event(event)
-                except asyncio.CancelledError:
-                    logger.warning("Event handling cancelled")
-                    raise
-                except Exception:
-                    logger.exception(f"Error processing event {type(event).__name__}")
-                finally:
-                    self._event_queue.task_done()  # type: ignore
+                        try:
+                            await self._handle_event(event)
+                        except asyncio.CancelledError:
+                            logger.warning("Event handling cancelled")
+                            raise
+                        except Exception:
+                            logger.exception(f"Error processing event {type(event).__name__}")
+                        finally:
+                            self._event_queue.task_done()  # type: ignore
+                    except asyncio.CancelledError:
+                        logger.info("Event processing loop cancelled")
+                        raise
+                
+                # Leave time for other processes to run
+                await asyncio.sleep(1)
 
             except asyncio.CancelledError:
                 logger.info("Event processing loop cancelled")
-                break
+                raise
             except Exception as e:
                 logger.exception(f"Error in event processing loop: {e}")
                 await asyncio.sleep(0.1)
 
-        logger.info("Event processing loop finished")
 
     async def ensure_events_processed(self) -> None:
         """
@@ -437,7 +456,6 @@ class MessageBus:
         # Re-queue scheduled events
         for event in temp_queue:
             await self._event_queue.put(event)
-        print(f"Re-queued {len(temp_queue)} scheduled events")
 
     async def _handle_event(self, event: Event) -> None:
         """
@@ -535,3 +553,66 @@ class MessageBus:
         async_wrapper.function = handler  # type: ignore[attr-defined]
 
         return async_wrapper
+
+    async def _dump_queue(self) -> None:
+        """
+        Dump the event queue to a file.
+        """
+        if self._event_queue is None:
+            return
+        with open(os.path.join(self.data_dir, "unfinished_events.jsonl"), "w") as f:
+            while not self._event_queue.empty():
+                event = await self._event_queue.get() # type: ignore
+                json.dump(event.to_dict(), f)
+                f.write('\n')  # Add newline after each JSON object
+
+    async def _load_queue(self) -> None:
+        """
+        Load the event queue from a file.
+        """
+        if self._event_queue is None:
+            return
+        
+        with open(os.path.join(self.data_dir, "unfinished_events.jsonl"), "r") as f:
+            for line in f:
+                event_dict = json.loads(line)
+                if "scheduled_time" in event_dict:
+                    event = ScheduledEvent.from_dict(event_dict)
+                else:
+                    event = Event.from_dict(event_dict)
+                await self._event_queue.put(event) # type: ignore
+
+        # Clear the file
+        with open(os.path.join(self.data_dir, "unfinished_events.jsonl"), "w") as f:
+            f.write("")
+
+def bus_exception_hook(bus: MessageBus) -> None:
+    """
+    Allows the bus to cleanup when an exception is raised globally.
+    """
+    def bus_excepthook(exc_type: Type[BaseException], exc_value: BaseException, exc_traceback: TracebackType) -> None:
+        logger.info("Global unhandled exception caught by bus excepthook!")
+        traceback.print_exception(exc_type, exc_value, exc_traceback)
+        
+        try:
+            # Try to get the current event loop
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # If loop is running, create a task to stop the bus
+                loop.create_task(bus.stop())
+            else:
+                # If loop is not running, run the stop method
+                loop.run_until_complete(bus.stop())
+        except RuntimeError:
+            # No event loop available, try to create one
+            try:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                loop.run_until_complete(bus.stop())
+                loop.close()
+            except Exception as e:
+                print(f"Failed to cleanup bus: {e}")
+        
+        # Exit the program
+        sys.exit(1)
+    sys.excepthook = bus_excepthook
