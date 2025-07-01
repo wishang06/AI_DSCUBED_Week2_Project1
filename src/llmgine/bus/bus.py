@@ -144,9 +144,7 @@ class MessageBus:
                 self._event_queue = asyncio.Queue()
                 logger.info("Event queue created")
                 self._processing_task = asyncio.create_task(self._process_events())
-                logger.info("MessageBus started")
-            else:
-                logger.error("Failed to create event queue, MessageBus cannot start")
+            logger.info("MessageBus started")
         else:
             logger.warning("MessageBus already running")
 
@@ -439,6 +437,7 @@ class MessageBus:
         # Re-queue scheduled events
         for event in temp_queue:
             await self._event_queue.put(event)
+        print(f"Re-queued {len(temp_queue)} scheduled events")
 
     async def _handle_event(self, event: Event) -> None:
         """
