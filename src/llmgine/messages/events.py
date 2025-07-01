@@ -67,3 +67,14 @@ class CommandResultEvent(Event):
     """Event emitted when a command result is created."""
 
     command_result: Optional[CommandResult] = None
+
+@dataclass
+class ScheduledEvent(Event):
+    """Base class for all scheduled events.
+    
+    Scheduled events are placed in the message bus and are processed
+    at a specific time.
+    Scheduled time must be provided. 
+    If not, the event will be treated as a regular event.
+    """
+    scheduled_time: datetime = field(default_factory=lambda: datetime.now())

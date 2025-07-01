@@ -6,6 +6,7 @@ providing a way for components to communicate without direct dependencies.
 
 import asyncio
 import contextvars
+from datetime import datetime
 import logging
 import traceback
 from typing import (
@@ -30,6 +31,7 @@ from llmgine.messages.events import (
     CommandStartedEvent,
     Event,
     EventHandlerFailedEvent,
+    ScheduledEvent,
 )
 from llmgine.observability.handlers.base import ObservabilityEventHandler
 
@@ -380,7 +382,7 @@ class MessageBus:
         except Exception as e:
             logger.error(f"Error queing event: {e}", exc_info=True)
         finally:
-            if await_processing:
+            if not isinstance(event, ScheduledEvent) and await_processing:
                 await self.ensure_events_processed()
 
     async def _process_events(self) -> None:
@@ -394,6 +396,12 @@ class MessageBus:
             try:
                 event = await self._event_queue.get()  # type: ignore
                 logger.debug(f"Dequeued event {type(event).__name__}")
+
+                # if a scheduled event is not yet due, we queue it again
+                if isinstance(event, ScheduledEvent) and event.scheduled_time > datetime.now():
+                    await self._event_queue.put(event) # type: ignore
+                    logger.debug(f"Event {type(event).__name__} is scheduled for {event.scheduled_time}, queuing again")
+                    continue
 
                 try:
                     await self._handle_event(event)
@@ -416,11 +424,21 @@ class MessageBus:
 
     async def ensure_events_processed(self) -> None:
         """
-        Ensure all events in the queue are processed.
+        Ensure all non-scheduled events in the queue are processed.
         """
-        while not self._event_queue.empty():  # type: ignore
-            event = await self._event_queue.get()  # type: ignore
-            await self._handle_event(event)
+        if self._event_queue is None:
+            return
+
+        temp_queue: List[Event] = []
+        while not self._event_queue.empty():
+            event = await self._event_queue.get()
+            if isinstance(event, ScheduledEvent) and event.scheduled_time > datetime.now():
+                temp_queue.append(event)  # Save scheduled events for re-queuing
+            else:
+                await self._handle_event(event)
+        # Re-queue scheduled events
+        for event in temp_queue:
+            await self._event_queue.put(event)
 
     async def _handle_event(self, event: Event) -> None:
         """
