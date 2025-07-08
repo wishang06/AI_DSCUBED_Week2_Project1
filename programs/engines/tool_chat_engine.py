@@ -222,11 +222,15 @@ async def main():
     import os
 
     print(f"Current working directory: {os.getcwd()}")
-    
+
     from tools.test_tools import get_weather
     from llmgine.ui.cli.components import ToolComponent
+    from llmgine.bootstrap import ApplicationBootstrap, ApplicationConfig
 
-    await MessageBus().start()
+    config = ApplicationConfig(enable_console_handler=False)
+    bootstrap = ApplicationBootstrap(config)
+    await bootstrap.bootstrap()
+
     cli = EngineCLI(SessionID("test"))
     engine = ToolChatEngine(session_id=SessionID("test"))
     await engine.register_tool(get_weather)
