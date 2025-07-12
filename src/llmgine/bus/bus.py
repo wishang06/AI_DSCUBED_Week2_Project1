@@ -4,7 +4,6 @@ The message bus is the central communication mechanism in the application,
 providing a way for components to communicate without direct dependencies.
 """
 
-import json
 import os
 import sys
 import asyncio
