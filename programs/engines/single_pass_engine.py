@@ -19,6 +19,7 @@ class SinglePassEngineCommand(Command):
 @dataclass
 class SinglePassEngineStatusEvent(Event):
     status: str = ""
+    session_id: Optional[SessionID] = None
 
 
 class SinglePassEngine(Engine):

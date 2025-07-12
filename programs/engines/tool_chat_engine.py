@@ -10,7 +10,6 @@ from llmgine.llm.providers.providers import Providers
 from llmgine.llm.tools.tool_manager import ToolManager
 from llmgine.llm.tools import ToolCall
 from llmgine.llm.models.openai_models import OpenAIResponse
-from openai.types.chat.chat_completion_message import ChatCompletionMessage
 
 from llmgine.messages.commands import Command, CommandResult
 from llmgine.messages.events import Event
@@ -106,13 +105,13 @@ class ToolChatEngine:
                 assert isinstance(response, OpenAIResponse), (
                     "response is not an OpenAIResponse"
                 )
-
+ 
                 # print(f"\nLLM Raw Response:\n{response.raw}\n")  # Debug print
 
                 # 5. Extract the first choice's message object
                 # Important: Access the underlying OpenAI object structure
-                response_message: ChatCompletionMessage = response.raw.choices[0].message
-                assert isinstance(response_message, ChatCompletionMessage), (
+                response_message: dict = response.raw.choices[0].message
+                assert isinstance(response_message, dict), (
                     "response_message is not a ChatCompletionMessage"
                 )
 
@@ -121,9 +120,9 @@ class ToolChatEngine:
                 await self.context_manager.store_assistant_message(response_message)
 
                 # 7. Check for tool calls
-                if not response_message.tool_calls:
+                if not response_message.get("tool_calls"):
                     # No tool calls, break the loop and return the content
-                    final_content = response_message.content or ""
+                    final_content = response_message.get("content") or ""
 
                     # Notify status complete
                     await self.message_bus.publish(
@@ -136,11 +135,11 @@ class ToolChatEngine:
                     )
 
                 # 8. Process tool calls
-                for tool_call in response_message.tool_calls:
+                for tool_call in response_message.get("tool_calls", []):
                     tool_call_obj = ToolCall(
-                        id=tool_call.id,
-                        name=tool_call.function.name,
-                        arguments=tool_call.function.arguments,
+                        id=tool_call.get("id"),
+                        name=tool_call.get("function", {}).get("name"),
+                        arguments=tool_call.get("function", {}).get("arguments"),
                     )
                     try:
                         # Execute the tool
