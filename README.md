@@ -1,228 +1,391 @@
-# 🌌 **LLMgine**
+# 🚀 **YourEngine - Custom LLM Engine with Tool Integration**
 
-LLMgine is a _pattern-driven_ framework for building **production-grade, tool-augmented LLM applications** in Python.  
-It offers a clean separation between _**engines**_ (conversation logic), _**models/providers**_ (LLM back-ends), _**tools**_ (function calling), a streaming **message-bus** for commands & events, and opt-in **observability**.  
-Think _FastAPI_ for web servers or _Celery_ for tasks—LLMgine plays the same role for complex, chat-oriented AI.
+YourEngine is a custom LLM engine built on the LLMgine framework that demonstrates advanced conversation capabilities with tool integration, persistent memory, and a rich CLI interface. It showcases how to build production-ready AI applications with mathematical computation, gaming features, and intelligent conversation flow.
 
 ---
 
-## ✨ Feature Highlights
-| Area | What you get | Key files |
-|------|--------------|-----------|
-| **Engines** | Plug-n-play `Engine` subclasses (`SinglePassEngine`, `ToolChatEngine`, …) with session isolation, tool-loop orchestration, and CLI front-ends | `engines/*.py`, `src/llmgine/llm/engine/` |
-| **Message Bus** | Async **command bus** (1 handler) + **event bus** (N listeners) + **sessions** for scoped handlers | `src/llmgine/bus/` |
-| **Tooling** | Declarative function-to-tool registration, multi-provider JSON-schema parsing (OpenAI, Claude, DeepSeek), async execution pipeline | `src/llmgine/llm/tools/` |
-| **Providers / Models** | Wrapper classes for OpenAI, OpenRouter, Gemini 2.5 Flash etc. _without locking you in_ | `src/llmgine/llm/providers/`, `src/llmgine/llm/models/` |
-| **Context Management** | Simple and in-memory chat history managers, event-emitting for retrieval/update | `src/llmgine/llm/context/` |
-| **UI** | Rich-powered interactive CLI (`EngineCLI`) with live spinners, confirmation prompts, tool result panes | `src/llmgine/ui/cli/` |
-| **Observability** | Console + JSONL file handlers, per-event metadata, easy custom sinks | `src/llmgine/observability/` |
-| **Bootstrap** | One-liner `ApplicationBootstrap` that wires logging, bus startup, and observability | `src/llmgine/bootstrap.py` |
+## ✨ **Key Features**
+
+| Feature | Description | Implementation |
+|---------|-------------|----------------|
+| **🧮 Mathematical Calculator** | Advanced mathematical expression evaluation | Project 1 Calculator tool integration |
+| **🎰 Slot Machine Game** | Interactive slot machine with betting system | Project 1 SlotMachine tool integration |
+| **💾 Conversation Memory** | Persistent chat history across sessions | SimpleChatHistory context manager |
+| **🔄 Tool Execution Loop** | Multi-step tool calling with context updates | OpenAI function calling pattern |
+| **🎨 Rich CLI Interface** | Live status updates, tool results, and interactive prompts | EngineCLI with Rich components |
+| **⚡ Async Architecture** | Full async/await support for high performance | MessageBus with event-driven design |
 
 ---
 
-## 🏗️ High-Level Architecture
+## 🏗️ **Architecture Overview**
 
 ```mermaid
 flowchart TD
-    %% Nodes
-    AppBootstrap["ApplicationBootstrap"]
-    Bus["MessageBus<br/>(async loop)"]
-    Obs["Observability<br/>Handlers"]
-    Eng["Engine(s)"]
-    TM["ToolManager"]
-    Tools["Your&nbsp;Tools"]
-    Session["BusSession"]
-    CLI["CLI / UI"]
-
-    %% Edges
-    AppBootstrap -->|starts| Bus
-
-    Bus -->|events| Obs
-    Bus -->|commands| Eng
-    Bus -->|events| Session
-
-    Eng -- status --> Bus
-    Eng -- tool_calls --> TM
-
-    TM -- executes --> Tools
-    Tools -- ToolResult --> CLI
-
-    Session --> CLI
+    User[👤 User Input] --> CLI[🖥️ EngineCLI]
+    CLI --> Bus[📡 MessageBus]
+    Bus --> Engine[⚙️ MyCustomEngine]
+    
+    Engine --> Memory[💾 SimpleChatHistory]
+    Engine --> Tools[🔧 ToolManager]
+    Engine --> LLM[🤖 OpenAI GPT-4]
+    
+    Tools --> Calc[🧮 Calculator]
+    Tools --> Slot[🎰 SlotMachine]
+    
+    Memory --> Context[📝 Conversation Context]
+    Context --> LLM
+    
+    LLM --> ToolCalls[🔧 Tool Calls]
+    ToolCalls --> Tools
+    Tools --> Results[📊 Tool Results]
+    Results --> Memory
+    
+    Engine --> Events[📢 Status Events]
+    Events --> CLI
 ```
-
-*Every component communicates _only_ through the bus, so engines, tools, and UIs remain fully decoupled.*
 
 ---
 
-## 🚀 Quick Start
+## 🚀 **Quick Start**
 
-### 1. Install
-
+### 1. **Setup Environment**
 ```bash
-git clone https://github.com/your-org/llmgine.git
-cd llmgine
-python -m venv .venv && source .venv/bin/activate
-pip install -e ".[openai]"   # extras: openai, openrouter, dev, …
-export OPENAI_API_KEY="sk-…" # or OPENROUTER_API_KEY / GEMINI_API_KEY
+# Create virtual environment
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\Activate.ps1
+
+# Install dependencies
+pip install -e .
+
+# Set up environment variables
+echo "OPENAI_API_KEY=your_api_key_here" > .env
+echo "DATABASE_URL=sqlite:///./llmgine.db" >> .env
 ```
 
-### 2. Run the demo CLI
-
+### 2. **Run YourEngine**
 ```bash
-python -m llmgine.engines.single_pass_engine  # pirate translator
-# or
-python -m llmgine.engines.tool_chat_engine    # automatic tool loop
+python programs/engines/yourengine.py
 ```
 
-You’ll get an interactive prompt with live status updates and tool execution logs.
+### 3. **Start Chatting!**
+```
+🤖 Welcome to YourEngine! I can help you with calculations and games.
+
+You: Calculate 15 * 23 + 7
+🤖 Let me calculate that for you...
+🧮 Tool Result: 352
+
+You: Play the slot machine with 50 credits
+🤖 Spinning the slot machine...
+🎰 Tool Result: 🍒🍊🍇 You won 150 credits! Total balance: 200 credits
+
+You: What was my last calculation?
+🤖 Your last calculation was 15 * 23 + 7 = 352. I remember that from our conversation!
+```
 
 ---
 
-## 🧑‍💻 Building Your Own Engine
+## 🔧 **Engine Components**
 
+### **1. Commands & Events System**
 ```python
-from llmgine.llm.engine.engine import Engine
-from llmgine.messages.commands import Command, CommandResult
-from llmgine.bus.bus import MessageBus
-
-class MyCommand(Command):
+@dataclass
+class MyCustomEngineCommand(Command):
     prompt: str = ""
+    temperature: Optional[float] = None
+    max_tokens: Optional[int] = None
 
-class MyEngine(Engine):
-    def __init__(self, session_id: str):
-        self.session_id = session_id
-        self.bus = MessageBus()
-
-    async def handle_command(self, cmd: MyCommand) -> CommandResult:
-        await self.bus.publish(Status("thinking", session_id=self.session_id))
-        # call LLM or custom logic here …
-        answer = f"Echo: {cmd.prompt}"
-        await self.bus.publish(Status("finished", session_id=self.session_id))
-        return CommandResult(success=True, result=answer)
-
-# Wire into CLI
-from llmgine.ui.cli.cli import EngineCLI
-chat = EngineCLI(session_id="demo")
-chat.register_engine(MyEngine("demo"))
-chat.register_engine_command(MyCommand, MyEngine("demo").handle_command)
-await chat.main()
+@dataclass
+class MyCustomEngineStatusEvent(Event):
+    status: str = ""  # "Processing", "Executing tool", "Completed"
 ```
 
----
+**Purpose**: Handles user input and communicates engine state to the CLI.
 
-## 🔧 Registering Tools in 3 Lines
-
+### **2. Core Engine Class**
 ```python
-from llmgine.llm.tools.tool import Parameter
-from llmgine.engines.tool_chat_engine import ToolChatEngine
-
-def get_weather(city: str):
-    """Return current temperature for a city.
-    Args:
-        city: Name of the city
-    """
-    return f"{city}: 17 °C"
-
-engine = ToolChatEngine(session_id="demo")
-await engine.register_tool(get_weather)               # ← introspection magic ✨
+class MyCustomEngine(Engine):
+    def __init__(self, model: Any, system_prompt: Optional[str] = None, session_id: Optional[SessionID] = None):
+        self.model = model
+        self.context_manager = SimpleChatHistory(...)  # Conversation memory
+        self.tool_manager = ToolManager(...)           # Tool execution
+        self.bus = MessageBus()                        # Event communication
 ```
 
-The engine now follows the **OpenAI function-calling loop**:
+**Features**:
+- **Conversation Memory**: Maintains full chat history
+- **Tool Management**: Handles Project 1 tools (Calculator, SlotMachine)
+- **Event System**: Real-time status updates
 
-```
-User → Engine → LLM (asks to call get_weather) → ToolManager → get_weather()
-          ↑                                        ↓
-          └───────────    context update   ────────┘ (loops until no tool calls)
-```
-
----
-
-## 📰 Message Bus in Depth
-
+### **3. Tool Integration**
 ```python
-from llmgine.bus.bus import MessageBus
-from llmgine.bus.session import BusSession
+# Calculator Tool
+async def calculate_math(expression: str) -> str:
+    """Calculate mathematical expressions."""
+    return await calculator.execute(expression)
 
-bus = MessageBus()
-await bus.start()
-
-class Ping(Command): pass
-class Pong(Event): msg: str = "pong!"
-
-async def ping_handler(cmd: Ping):
-    await bus.publish(Pong(session_id=cmd.session_id))
-    return CommandResult(success=True)
-
-with bus.create_session() as sess:
-    sess.register_command_handler(Ping, ping_handler)
-    sess.register_event_handler(Pong, lambda e: print(e.msg))
-    await sess.execute_with_session(Ping())      # prints “pong!”
+# Slot Machine Tool  
+async def play_slot_machine(action: str, bet_amount: int = 10) -> str:
+    """Play the slot machine game."""
+    return await slot_machine.execute(action, bet_amount)
 ```
 
-*Handlers are **auto-unregistered** when the `BusSession` exits—no leaks.*
+**Capabilities**:
+- **Mathematical Expressions**: `2 + 3 * 4`, `sqrt(16)`, `sin(45)`
+- **Slot Machine Game**: Spin, check balance, betting system
+- **Automatic Tool Selection**: LLM chooses appropriate tools
 
 ---
 
-## 📊 Observability
+## 🧠 **Conversation Memory System**
 
-Add structured logs with zero boilerplate:
+YourEngine solves the common chatbot memory problem with `SimpleChatHistory`:
 
+### **Before (Memory Issues)**
+```
+User: "What's 2+2?"
+Bot: "2+2 = 4"
+User: "What was my last question?"
+Bot: "I don't remember our previous conversation."
+```
+
+### **After (With Memory)**
+```
+User: "What's 2+2?"
+Bot: "2+2 = 4"
+User: "What was my last question?"
+Bot: "You asked me to calculate 2+2, which equals 4."
+```
+
+### **Memory Features**
+- **Persistent Context**: All messages stored across sessions
+- **Tool Call History**: Remembers tool executions and results
+- **System Prompts**: Maintains conversation personality
+- **Session Isolation**: Separate memory per conversation
+
+---
+
+## 🎮 **Tool Execution Flow**
+
+YourEngine implements the OpenAI function calling pattern:
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant E as Engine
+    participant L as LLM
+    participant T as ToolManager
+    participant C as Calculator/SlotMachine
+
+    U->>E: "Calculate 15 * 23"
+    E->>L: Generate with tools available
+    L->>E: Response with tool call
+    E->>T: Execute calculate_math("15 * 23")
+    T->>C: calculator.execute("15 * 23")
+    C->>T: "345"
+    T->>E: Tool result
+    E->>L: Generate with tool result
+    L->>E: Final response
+    E->>U: "15 * 23 = 345"
+```
+
+---
+
+## 🖥️ **CLI Interface**
+
+YourEngine provides a rich, interactive CLI experience:
+
+### **Status Updates**
+```
+🔄 Processing request...
+🔧 Executing tool: calculate_math
+✅ Completed
+```
+
+### **Tool Results**
+```
+🧮 Calculator Tool Result:
+Expression: 15 * 23 + 7
+Result: 352
+```
+
+### **Interactive Features**
+- **Live Spinners**: Real-time status indicators
+- **Tool Result Panels**: Formatted tool execution results
+- **Error Handling**: Graceful error display
+- **Command History**: Previous interactions visible
+
+---
+
+## 🔧 **Configuration Options**
+
+### **System Prompts**
 ```python
-from llmgine.bootstrap import ApplicationBootstrap, ApplicationConfig
-config = ApplicationConfig(enable_console_handler=True,
-                           enable_file_handler=True,
-                           log_level="debug")
-await ApplicationBootstrap(config).bootstrap()
+engine = MyCustomEngine(
+    model=Gpt41Mini(Providers.OPENAI),
+    system_prompt="You are a helpful AI assistant with access to powerful tools...",
+    session_id=SessionID("my-custom-engine")
+)
 ```
 
-*All events/commands flow through `ConsoleEventHandler` and `FileEventHandler`
-to a timestamped `logs/events_*.jsonl` file.*
+### **Generation Parameters**
+```python
+# Temperature control
+result = await engine.execute("Hello", temperature=0.7)
 
----
-
-## 📁 Repository Layout (abridged)
-
+# Token limits
+result = await engine.execute("Explain quantum physics", max_tokens=500)
 ```
-llmgine/
-│
-├─ engines/            # Turn-key example engines (single-pass, tool chat, …)
-└─ src/llmgine/
-   ├─ bus/             # Message bus core + sessions
-   ├─ llm/
-   │   ├─ context/     # Chat history & context events
-   │   ├─ engine/      # Engine base + dummy
-   │   ├─ models/      # Provider-agnostic model wrappers
-   │   ├─ providers/   # OpenAI, OpenRouter, Gemini, Dummy, …
-   │   └─ tools/       # ToolManager, parser, register, types
-   ├─ observability/   # Console & file handlers, log events
-   └─ ui/cli/          # Rich-based CLI components
+
+### **Tool Registration**
+```python
+# Register custom tools
+await engine.register_tool(your_custom_function)
+
+# Clear conversation
+await engine.clear_context()
+
+# Set new system prompt
+engine.set_system_prompt("You are now a pirate!")
 ```
 
 ---
 
-## 🏁 Roadmap
+## 🧪 **Usage Examples**
 
-- [ ] **Streaming responses** with incremental event dispatch  
-- [ ] **WebSocket / FastAPI** front-end (drop-in replacement for CLI)  
-- [ ] **Persistent vector memory** layer behind `ContextManager`  
-- [ ] **Plugin system** for third-party Observability handlers  
-- [ ] **More providers**: Anthropic, Vertex AI, etc.
+### **Mathematical Calculations**
+```
+You: Calculate the area of a circle with radius 5
+Bot: Let me calculate that for you...
+🧮 Tool Result: Area = π × 5² = 78.54 square units
+
+You: What if the radius was 10?
+Bot: For a radius of 10, the area would be π × 10² = 314.16 square units
+```
+
+### **Slot Machine Gaming**
+```
+You: Play the slot machine with 100 credits
+Bot: Spinning the slot machine...
+🎰 Tool Result: 🍒🍒🍒 JACKPOT! You won 1000 credits! Total: 1100
+
+You: What's my balance now?
+Bot: Your current balance is 1100 credits from our slot machine session.
+```
+
+### **Conversation Memory**
+```
+You: My name is Alice
+Bot: Nice to meet you, Alice!
+
+You: What's my name?
+Bot: Your name is Alice, as you told me earlier in our conversation.
+```
 
 ---
 
-## 🤝 Contributing
+## 🚀 **Extending YourEngine**
 
-1. Fork & create a feature branch  
-2. Ensure `pre-commit` passes (`ruff`, `black`, `isort`, `pytest`)  
-3. Open a PR with context + screenshots/GIFs if UI-related  
+### **Adding New Tools**
+```python
+async def weather_tool(city: str) -> str:
+    """Get weather information for a city."""
+    return f"Weather in {city}: Sunny, 22°C"
+
+await engine.register_tool(weather_tool)
+```
+
+### **Custom System Prompts**
+```python
+engine.set_system_prompt("""
+You are a helpful AI assistant with expertise in:
+- Mathematics and calculations
+- Gaming and entertainment
+- General knowledge and conversation
+
+Always be encouraging and provide detailed responses.
+""")
+```
+
+### **Multiple Engine Instances**
+```python
+# Math-focused engine
+math_engine = MyCustomEngine(
+    model=Gpt41Mini(Providers.OPENAI),
+    system_prompt="You are a math tutor...",
+    session_id=SessionID("math-session")
+)
+
+# Gaming-focused engine  
+game_engine = MyCustomEngine(
+    model=Gpt41Mini(Providers.OPENAI),
+    system_prompt="You are a game master...",
+    session_id=SessionID("game-session")
+)
+```
 
 ---
 
-## 📄 License
+## 🔍 **Technical Implementation**
 
-LLMgine is distributed under the **MIT License**—see [`LICENSE`](LICENSE) for details.
+### **File Structure**
+```
+programs/engines/yourengine.py
+├── Commands & Events (22-47)
+├── Engine Class (49-250)
+│   ├── Initialization (52-75)
+│   ├── Command Handler (77-90)
+│   ├── Core Execution (92-250)
+│   └── Tool Management (252-280)
+└── CLI Integration (282-380)
+```
+
+### **Key Dependencies**
+- **LLMgine Framework**: Engine base classes and patterns
+- **OpenAI API**: GPT-4 model integration
+- **Rich**: CLI interface components
+- **SimpleChatHistory**: Conversation memory
+- **ToolManager**: Function calling orchestration
+
+### **Event Flow**
+1. **User Input** → `MyCustomEngineCommand`
+2. **Command Processing** → `handle_command()`
+3. **Context Retrieval** → `SimpleChatHistory.retrieve()`
+4. **LLM Generation** → `model.generate()`
+5. **Tool Execution** → `ToolManager.execute_tool_call()`
+6. **Result Storage** → `SimpleChatHistory.store_tool_call_result()`
+7. **Status Updates** → `MyCustomEngineStatusEvent`
 
 ---
 
-> _“Build architecturally sound LLM apps, not spaghetti code.  
-> Welcome to the engine room.”_
+## 🎯 **Why YourEngine?**
+
+### **Production Ready**
+- ✅ **Error Handling**: Graceful failure recovery
+- ✅ **Memory Management**: Persistent conversation context
+- ✅ **Tool Integration**: Seamless function calling
+- ✅ **CLI Experience**: Rich, interactive interface
+
+### **Extensible Architecture**
+- ✅ **Modular Design**: Easy to add new tools
+- ✅ **Event-Driven**: Decoupled components
+- ✅ **Async Support**: High-performance operations
+- ✅ **Session Isolation**: Multiple conversation contexts
+
+### **Developer Friendly**
+- ✅ **Clear Patterns**: Follows LLMgine engine guide
+- ✅ **Type Safety**: Full type annotations
+- ✅ **Documentation**: Comprehensive docstrings
+- ✅ **Testing Ready**: Structured for unit tests
+
+---
+
+## 🚀 **Get Started Today**
+
+YourEngine demonstrates the power of the LLMgine framework for building sophisticated AI applications. Whether you're building chatbots, calculation tools, or interactive games, YourEngine provides the foundation for creating memorable user experiences.
+
+**Ready to build your own engine?** Start with YourEngine as your template and customize it for your specific use case!
+
+---
+
+> *"From simple calculations to complex conversations, YourEngine shows what's possible when you combine the right tools with intelligent conversation flow."*

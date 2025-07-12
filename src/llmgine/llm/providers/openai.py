@@ -105,6 +105,8 @@ class OpenAIProvider(LLMProvider):
             payload["reasoning_effort"] = reasoning_effort
 
         payload.update(**kwargs)
+        # Remove 'test' if present, as OpenAI API does not accept it
+        payload.pop('test', None)
         call_event = LLMCallEvent(
             call_id=call_id,
             model_id=self.model_component_id,
