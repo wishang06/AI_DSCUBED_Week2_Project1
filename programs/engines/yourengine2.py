@@ -69,14 +69,12 @@ class MyCustomEngine(Engine):
         self.bus = MessageBus()
         self.engine_id: str = str(uuid.uuid4())
         
-        # Initialize tool manager
         self.tool_manager = ToolManager(
             engine_id=self.engine_id, 
             session_id=self.session_id, 
             llm_model_name="openai"
         )
         
-        # Initialize conversation memory
         self.context_manager = SimpleChatHistory(
             engine_id=self.engine_id, 
             session_id=self.session_id
@@ -92,7 +90,6 @@ class MyCustomEngine(Engine):
             CommandResult: The result of the command execution
         """
         try:
-            # Cast to MyCustomEngineCommand
             my_command = command if isinstance(command, MyCustomEngineCommand) else MyCustomEngineCommand(**command.__dict__)
             result = await self.execute(my_command.prompt, my_command.temperature, my_command.max_tokens)
             return CommandResult(success=True, result=result, session_id=self.session_id)
@@ -111,18 +108,13 @@ class MyCustomEngine(Engine):
             The generated response
         """
         try:
-            # Add user message to conversation history
             self.context_manager.store_string(prompt, "user")
             
-            # Loop for potential tool execution cycles
             while True:
-                # Get current context (including conversation history)
                 context = await self.context_manager.retrieve()
                 
-                # Get available tools
                 tools = await self.tool_manager.get_tools()
                 
-                # Publish status event
                 await self.bus.publish(
                     MyCustomEngineStatusEvent(
                         status="Processing request", 
@@ -130,7 +122,6 @@ class MyCustomEngine(Engine):
                     )
                 )
 
-                # Prepare generation parameters
                 generation_params = {}
                 if temperature is not None:
                     generation_params["temperature"] = temperature
@@ -144,7 +135,6 @@ class MyCustomEngine(Engine):
                     **generation_params
                 )
                 
-                # Extract the response message
                 response_message: ChatCompletionMessage = response.raw.choices[0].message
                 
                 # Store the assistant message in conversation history
@@ -152,10 +142,8 @@ class MyCustomEngine(Engine):
                 
                 # Check for tool calls
                 if not response_message.tool_calls:
-                    # No tool calls, return the content
                     final_content = response_message.content or ""
                     
-                    # Publish completion status
                     await self.bus.publish(
                         MyCustomEngineStatusEvent(
                             status="Completed", 
@@ -170,14 +158,12 @@ class MyCustomEngine(Engine):
                             session_id=self.session_id
                         )
                     )
-                    # Clear the status bar after completion
                     await self.bus.publish(
                         MyCustomEngineStatusEvent(
                             status="",
                             session_id=self.session_id
                         )
                     )
-                    # Stop the loading spinner
                     await self.bus.publish(
                         MyCustomEngineStatusEvent(
                             status="finished",
@@ -218,7 +204,6 @@ class MyCustomEngine(Engine):
                             content=result_str
                         )
                         
-                        # Publish tool execution event
                         await self.bus.publish(
                             MyCustomEngineToolResultEvent(
                                 tool_name=tool_call_obj.name,
@@ -238,7 +223,6 @@ class MyCustomEngine(Engine):
                             content=error_msg
                         )
                 
-                # Continue loop to call LLM again with updated context
                 
         except Exception as e:
             print(f"ERROR in execute: {e}")
@@ -271,7 +255,7 @@ class MyCustomEngine(Engine):
 
 async def use_my_custom_engine(
     prompt: str, 
-    model: Any,  # Changed from Model to Any to support Gpt41Mini
+    model: Any,
     system_prompt: Optional[str] = None,
     temperature: Optional[float] = None,
     max_tokens: Optional[int] = None
@@ -306,30 +290,24 @@ async def main(case: int = 1):
     # Import Project 1 tools
     from tools.project1_tools import Calculator, WebSearch, SlotMachine
 
-    # Bootstrap the application
     config = ApplicationConfig(enable_console_handler=False)
     bootstrap = ApplicationBootstrap(config)
     await bootstrap.bootstrap()
     
     if case == 1:
-        # CLI Mode
         print("Starting My Custom Engine with Project 1 Tools in CLI mode...")
         
-        # Create engine with a fun system prompt
         engine = MyCustomEngine(
             model=Gpt41Mini(Providers.OPENAI),
             system_prompt="You are a helpful AI assistant with access to powerful tools. You can calculate math expressions, search the web, and even play a slot machine game! Always be encouraging and provide detailed, helpful responses.",
             session_id=SessionID("my-custom-engine")
         )
         
-        # Register Project 1 tools
         print("Registering Project 1 tools...")
         
-        # Create tool instances
         calculator = Calculator()
         slot_machine = SlotMachine()
         
-        # Register tools as async functions
         async def calculate_math(expression: str) -> str:
             """Calculate mathematical expressions.
             
@@ -353,11 +331,9 @@ async def main(case: int = 1):
             """
             return await slot_machine.execute(action, bet_amount)
         
-        # Register tools with the engine
         await engine.register_tool(calculate_math)
         await engine.register_tool(play_slot_machine)
         
-        # Set up CLI
         cli = EngineCLI(SessionID("my-custom-engine"))
         cli.register_engine(engine)
         cli.register_engine_command(MyCustomEngineCommand, engine.handle_command)
@@ -365,11 +341,9 @@ async def main(case: int = 1):
         cli.register_loading_event(MyCustomEngineStatusEvent)
         cli.register_component_event(MyCustomEngineToolResultEvent, ToolComponent)
         
-        # Start CLI
         await cli.main()
         
     elif case == 2:
-        # Direct function call mode
         print("Running My Custom Engine in direct function call mode...")
         
         result = await use_my_custom_engine(
@@ -383,5 +357,4 @@ async def main(case: int = 1):
 
 
 if __name__ == "__main__":
-    # Run the engine (change case to 2 for direct function call)
     asyncio.run(main(1)) 
