@@ -21,33 +21,31 @@ from llmgine.ui.cli.components import EngineResultComponent, ToolComponent
 
 
 @dataclass
-class MyCustomEngineCommand(Command):
+class YourEngineCommand(Command):
     """Command for the My Custom Engine."""
     prompt: str = ""
-    temperature: Optional[float] = None
-    max_tokens: Optional[int] = None
 
 
 @dataclass
-class MyCustomEngineStatusEvent(Event):
+class YourEngineStatusEvent(Event):
     """Event emitted when the status of the engine changes."""
     status: str = ""
 
 
 @dataclass
-class MyCustomEngineResultEvent(Event):
+class YourEngineResultEvent(Event):
     """Event emitted when the engine produces a result."""
     result: str = ""
 
 
 @dataclass
-class MyCustomEngineToolResultEvent(Event):
+class YourEngineToolResultEvent(Event):
     """Event emitted when a tool is executed."""
     tool_name: str = ""
     result: Any = None
 
 
-class MyCustomEngine(Engine):
+class YourEngine(Engine):
     """A custom engine that can be extended with your own logic and tools."""
     
     def __init__(
@@ -90,19 +88,17 @@ class MyCustomEngine(Engine):
             CommandResult: The result of the command execution
         """
         try:
-            my_command = command if isinstance(command, MyCustomEngineCommand) else MyCustomEngineCommand(**command.__dict__)
-            result = await self.execute(my_command.prompt, my_command.temperature, my_command.max_tokens)
+            my_command = command if isinstance(command, YourEngineCommand) else YourEngineCommand(**command.__dict__)
+            result = await self.execute(my_command.prompt)
             return CommandResult(success=True, result=result, session_id=self.session_id)
         except Exception as e:
             return CommandResult(success=False, error=str(e), session_id=self.session_id)
 
-    async def execute(self, prompt: str, temperature: Optional[float] = None, max_tokens: Optional[int] = None) -> str:
+    async def execute(self, prompt: str) -> str:
         """Execute the main logic of the engine with tool support.
         
         Args:
             prompt: The user's prompt
-            temperature: 7
-            max_tokens: Optional max tokens for generation
             
         Returns:
             The generated response
@@ -116,63 +112,51 @@ class MyCustomEngine(Engine):
                 tools = await self.tool_manager.get_tools()
                 
                 await self.bus.publish(
-                    MyCustomEngineStatusEvent(
+                    YourEngineStatusEvent(
                         status="Processing request", 
                         session_id=self.session_id
                     )
                 )
 
-                generation_params = {}
-                if temperature is not None:
-                    generation_params["temperature"] = temperature
-                if max_tokens is not None:
-                    generation_params["max_completion_tokens"] = max_tokens
-
-                # Generate response from model
                 response: OpenAIResponse = await self.model.generate(
                     messages=context, 
-                    tools=tools,
-                    **generation_params
+                    tools=tools
                 )
                 
                 response_message: ChatCompletionMessage = response.raw.choices[0].message
                 
-                # Store the assistant message in conversation history
                 await self.context_manager.store_assistant_message(response_message)
                 
-                # Check for tool calls
                 if not response_message.tool_calls:
                     final_content = response_message.content or ""
                     
                     await self.bus.publish(
-                        MyCustomEngineStatusEvent(
+                        YourEngineStatusEvent(
                             status="Completed", 
                             session_id=self.session_id
                         )
                     )
                     
-                    # Publish result event
                     await self.bus.publish(
-                        MyCustomEngineResultEvent(
+                        YourEngineResultEvent(
                             result=final_content,
                             session_id=self.session_id
                         )
                     )
                     await self.bus.publish(
-                        MyCustomEngineStatusEvent(
+                        YourEngineStatusEvent(
                             status="",
                             session_id=self.session_id
                         )
                     )
                     await self.bus.publish(
-                        MyCustomEngineStatusEvent(
+                        YourEngineStatusEvent(
                             status="finished",
                             session_id=self.session_id
                         )
                     )
                     return final_content
                 
-                # Process tool calls
                 for tool_call in response_message.tool_calls:
                     tool_call_obj = ToolCall(
                         id=tool_call.id,
@@ -181,9 +165,8 @@ class MyCustomEngine(Engine):
                     )
                     
                     try:
-                        # Execute the tool
                         await self.bus.publish(
-                            MyCustomEngineStatusEvent(
+                            YourEngineStatusEvent(
                                 status="Executing tool", 
                                 session_id=self.session_id
                             )
@@ -191,7 +174,6 @@ class MyCustomEngine(Engine):
                         
                         result = await self.tool_manager.execute_tool_call(tool_call_obj)
                         
-                        # Convert result to string if needed
                         if isinstance(result, dict):
                             result_str = json.dumps(result)
                         else:
@@ -205,7 +187,7 @@ class MyCustomEngine(Engine):
                         )
                         
                         await self.bus.publish(
-                            MyCustomEngineToolResultEvent(
+                            YourEngineToolResultEvent(
                                 tool_name=tool_call_obj.name,
                                 result=result_str,
                                 session_id=self.session_id,
@@ -256,9 +238,7 @@ class MyCustomEngine(Engine):
 async def use_my_custom_engine(
     prompt: str, 
     model: Any,
-    system_prompt: Optional[str] = None,
-    temperature: Optional[float] = None,
-    max_tokens: Optional[int] = None
+    system_prompt: Optional[str] = None
 ) -> str:
     """Convenience function to use the engine directly.
     
@@ -266,15 +246,13 @@ async def use_my_custom_engine(
         prompt: The user's prompt
         model: The LLM model to use
         system_prompt: Optional system prompt
-        temperature: Optional temperature for generation
-        max_tokens: Optional max tokens for generation
         
     Returns:
         The generated response
     """
     session_id = SessionID(str(uuid.uuid4()))
-    engine = MyCustomEngine(model, system_prompt, session_id)
-    return await engine.execute(prompt, temperature, max_tokens)
+    engine = YourEngine(model, system_prompt, session_id)
+    return await engine.execute(prompt)
 
 
 async def main(case: int = 1):
@@ -297,7 +275,7 @@ async def main(case: int = 1):
     if case == 1:
         print("Starting My Custom Engine with Project 1 Tools in CLI mode...")
         
-        engine = MyCustomEngine(
+        engine = YourEngine(
             model=Gpt41Mini(Providers.OPENAI),
             system_prompt="You are a helpful AI assistant with access to powerful tools. You can calculate math expressions, search the web, and even play a slot machine game! Always be encouraging and provide detailed, helpful responses.",
             session_id=SessionID("my-custom-engine")
@@ -336,10 +314,10 @@ async def main(case: int = 1):
         
         cli = EngineCLI(SessionID("my-custom-engine"))
         cli.register_engine(engine)
-        cli.register_engine_command(MyCustomEngineCommand, engine.handle_command)
+        cli.register_engine_command(YourEngineCommand, engine.handle_command)
         cli.register_engine_result_component(EngineResultComponent)
-        cli.register_loading_event(MyCustomEngineStatusEvent)
-        cli.register_component_event(MyCustomEngineToolResultEvent, ToolComponent)
+        cli.register_loading_event(YourEngineStatusEvent)
+        cli.register_component_event(YourEngineToolResultEvent, ToolComponent)
         
         await cli.main()
         
@@ -349,12 +327,11 @@ async def main(case: int = 1):
         result = await use_my_custom_engine(
             prompt="Hello! Can you calculate 15 * 23 for me?",
             model=Gpt41Mini(Providers.OPENAI),
-            system_prompt="You are a helpful assistant with access to a calculator tool. Use it when users ask for calculations.",
-            temperature=0.7
+            system_prompt="You are a helpful assistant with access to a calculator tool. Use it when users ask for calculations."
         )
         
         print(f"Result: {result}")
 
 
 if __name__ == "__main__":
-    asyncio.run(main(1)) 
+    asyncio.run(main()) 

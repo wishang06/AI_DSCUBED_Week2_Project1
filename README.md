@@ -1,6 +1,6 @@
-# 🚀 **YourEngine - Custom LLM Engine with Tool Integration**
+# **"YourEngine.py" - Custom LLM Engine with Tool Integration**
 
-YourEngine is a custom LLM engine built on the LLMgine framework that demonstrates advanced conversation capabilities with tool integration, persistent memory, and a rich CLI interface. It showcases how to build production-ready AI applications with mathematical computation, gaming features, and intelligent conversation flow.
+YourEngine is a custom LLM engine built on the LLMgine framework that demonstrates advanced conversation capabilities with tool integration, access to conversation memory, and a clear CLI interface.
 
 ---
 
@@ -8,8 +8,8 @@ YourEngine is a custom LLM engine built on the LLMgine framework that demonstrat
 
 | Feature | Description | Implementation |
 |---------|-------------|----------------|
-| **🧮 Mathematical Calculator** | Advanced mathematical expression evaluation | Project 1 Calculator tool integration |
-| **🎰 Slot Machine Game** | Interactive slot machine with betting system | Project 1 SlotMachine tool integration |
+| **🧮 Mathematical Calculator** | Advanced mathematical expression evaluation | Calculator tool integration |
+| **🎰 Slot Machine Game** | Interactive slot machine with betting system | SlotMachine tool integration |
 | **💾 Conversation Memory** | Persistent chat history across sessions | SimpleChatHistory context manager |
 | **🔄 Tool Execution Loop** | Multi-step tool calling with context updates | OpenAI function calling pattern |
 | **🎨 Rich CLI Interface** | Live status updates, tool results, and interactive prompts | EngineCLI with Rich components |
@@ -38,6 +38,8 @@ flowchart TD
     LLM --> ToolCalls[🔧 Tool Calls]
     ToolCalls --> Tools
     Tools --> Results[📊 Tool Results]
+    Calc --> Results
+    Slot --> Results
     Results --> Memory
     
     Engine --> Events[📢 Status Events]
@@ -114,7 +116,7 @@ class MyCustomEngine(Engine):
 
 **Features**:
 - **Conversation Memory**: Maintains full chat history
-- **Tool Management**: Handles Project 1 tools (Calculator, SlotMachine)
+- **Tool Management**: Handles tools (Calculator, SlotMachine)
 - **Event System**: Real-time status updates
 
 ### **3. Tool Integration**
@@ -222,7 +224,7 @@ Result: 352
 ### **System Prompts**
 ```python
 engine = MyCustomEngine(
-    model=Gpt41Mini(Providers.OPENAI),
+    model=Gpt41Mini,
     system_prompt="You are a helpful AI assistant with access to powerful tools...",
     session_id=SessionID("my-custom-engine")
 )
@@ -284,47 +286,6 @@ Bot: Your name is Alice, as you told me earlier in our conversation.
 
 ---
 
-## 🚀 **Extending YourEngine**
-
-### **Adding New Tools**
-```python
-async def weather_tool(city: str) -> str:
-    """Get weather information for a city."""
-    return f"Weather in {city}: Sunny, 22°C"
-
-await engine.register_tool(weather_tool)
-```
-
-### **Custom System Prompts**
-```python
-engine.set_system_prompt("""
-You are a helpful AI assistant with expertise in:
-- Mathematics and calculations
-- Gaming and entertainment
-- General knowledge and conversation
-
-Always be encouraging and provide detailed responses.
-""")
-```
-
-### **Multiple Engine Instances**
-```python
-# Math-focused engine
-math_engine = MyCustomEngine(
-    model=Gpt41Mini(Providers.OPENAI),
-    system_prompt="You are a math tutor...",
-    session_id=SessionID("math-session")
-)
-
-# Gaming-focused engine  
-game_engine = MyCustomEngine(
-    model=Gpt41Mini(Providers.OPENAI),
-    system_prompt="You are a game master...",
-    session_id=SessionID("game-session")
-)
-```
-
----
 
 ## 🔍 **Technical Implementation**
 
@@ -345,7 +306,7 @@ programs/engines/yourengine.py
 - **OpenAI API**: GPT-4 model integration
 - **Rich**: CLI interface components
 - **SimpleChatHistory**: Conversation memory
-- **ToolManager**: Function calling orchestration
+- **ToolManager**: Tool Function caller
 
 ### **Event Flow**
 1. **User Input** → `MyCustomEngineCommand`
@@ -355,37 +316,3 @@ programs/engines/yourengine.py
 5. **Tool Execution** → `ToolManager.execute_tool_call()`
 6. **Result Storage** → `SimpleChatHistory.store_tool_call_result()`
 7. **Status Updates** → `MyCustomEngineStatusEvent`
-
----
-
-## 🎯 **Why YourEngine?**
-
-### **Production Ready**
-- ✅ **Error Handling**: Graceful failure recovery
-- ✅ **Memory Management**: Persistent conversation context
-- ✅ **Tool Integration**: Seamless function calling
-- ✅ **CLI Experience**: Rich, interactive interface
-
-### **Extensible Architecture**
-- ✅ **Modular Design**: Easy to add new tools
-- ✅ **Event-Driven**: Decoupled components
-- ✅ **Async Support**: High-performance operations
-- ✅ **Session Isolation**: Multiple conversation contexts
-
-### **Developer Friendly**
-- ✅ **Clear Patterns**: Follows LLMgine engine guide
-- ✅ **Type Safety**: Full type annotations
-- ✅ **Documentation**: Comprehensive docstrings
-- ✅ **Testing Ready**: Structured for unit tests
-
----
-
-## 🚀 **Get Started Today**
-
-YourEngine demonstrates the power of the LLMgine framework for building sophisticated AI applications. Whether you're building chatbots, calculation tools, or interactive games, YourEngine provides the foundation for creating memorable user experiences.
-
-**Ready to build your own engine?** Start with YourEngine as your template and customize it for your specific use case!
-
----
-
-> *"From simple calculations to complex conversations, YourEngine shows what's possible when you combine the right tools with intelligent conversation flow."*
