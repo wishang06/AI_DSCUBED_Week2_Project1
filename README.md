@@ -94,8 +94,6 @@ You: What was my last calculation?
 @dataclass
 class MyCustomEngineCommand(Command):
     prompt: str = ""
-    temperature: Optional[float] = None
-    max_tokens: Optional[int] = None
 
 @dataclass
 class MyCustomEngineStatusEvent(Event):
